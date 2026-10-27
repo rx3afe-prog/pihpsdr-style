@@ -825,16 +825,35 @@ void display_menu(GtkWidget *parent) {
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 1020, 460); /* PAN MENU SIZE PATCH */
+  { /* ZSCROLL PATCH: окно не вылезает за пределы экрана */
+    GdkRectangle mongeo = { 0, 0, 1024, 768 };
+    GdkDisplay *gdisp = gdk_display_get_default();
+    GdkMonitor *mon = gdisp ? gdk_display_get_primary_monitor(gdisp) : NULL;
+    if (mon == NULL && gdisp && gdk_display_get_n_monitors(gdisp) > 0) {
+      mon = gdk_display_get_monitor(gdisp, 0);
+    }
+    if (mon) { gdk_monitor_get_geometry(mon, &mongeo); }
+    int zmaxh = mongeo.height - 120; /* запас на шапку окна и панели */
+    if (zmaxh < 200) zmaxh = 200;
+    int zmaxw = mongeo.width - 40;
+    int zh = (460 < zmaxh) ? 460 : zmaxh;
+    int zw = (1020 < zmaxw) ? 1020 : zmaxw;
+    gtk_window_set_default_size(GTK_WINDOW(dialog), zw, zh);
+  }
   snprintf(title, sizeof(title), "piHPSDR-Improved - Display");
   gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), title);
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  /* ZSCROLL PATCH: прокрутка, как у веб-страницы */
+  GtkWidget *zscroll = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(zscroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_vexpand(zscroll, TRUE);
+  gtk_container_add(GTK_CONTAINER(content), zscroll);
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
-  gtk_container_add(GTK_CONTAINER(content), grid);
+  gtk_container_add(GTK_CONTAINER(zscroll), grid);
   int row = 0;
   int col = 0;
   btn = gtk_button_new_with_label("Закрыть");

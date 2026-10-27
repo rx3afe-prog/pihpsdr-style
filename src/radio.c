@@ -1143,20 +1143,26 @@ static int zen_dock_retry(gpointer data) {
 
 static gboolean zen_cycle_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
   (void)w; (void)e; (void)data;
-  if (zen_state == 4) {
+  if (zen_state == 3) {
     if (GTK_IS_WIDGET(menu_b) && gtk_widget_get_visible(menu_b)) {
       gtk_widget_hide(menu_b);
       gtk_widget_hide(hide_b);
-      g_print("Z4MENU: skryto, sostoyanie 4 sohraneno\n");
+      zen_state = 0;
+      zen_set_r1(0);
+      if (zen_r2) gtk_widget_hide(zen_r2);
+      if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), "Z"); }
+      { FILE *zsf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "w");
+        if (zsf) { fprintf(zsf, "%d", zen_state); fclose(zsf); } }
+      g_print("ZMENU: skryto, vozvrat v sostoyanie 0\n");
       return TRUE;
     }
   }
-  zen_state = (zen_state + 1) % 5;
+  zen_state = (zen_state + 1) % 4;
   g_print("Z: новое состояние %d\n", zen_state);
   { FILE *zsf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "w");
     if (zsf) { fprintf(zsf, "%d", zen_state); fclose(zsf); } }
 
-  if (zen_state == 0 || zen_state == 4) {
+  if (zen_state == 0 || zen_state == 3) {
     zen_set_r1(0);
     if (zen_r2) gtk_widget_hide(zen_r2);
   } else {
@@ -1169,10 +1175,10 @@ static gboolean zen_cycle_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
     }
   }
   if (GTK_IS_WIDGET(zen_zbtn)) {
-    const char *zl = (zen_state == 4) ? "Z4" : (zen_state == 3) ? "Z3" : (zen_state == 2) ? "Z2" : (zen_state == 1) ? "Z1" : "Z";
+    const char *zl = (zen_state == 3) ? "Z3" : (zen_state == 2) ? "Z2" : (zen_state == 1) ? "Z1" : "Z";
     gtk_button_set_label(GTK_BUTTON(zen_zbtn), zl);
   }
-  if (zen_state == 4 && GTK_IS_WIDGET(zen_zbtn)) {
+  if (zen_state == 3 && GTK_IS_WIDGET(zen_zbtn)) {
     int zx = 0, zy = 0, zw = 0;
     if (!gtk_widget_translate_coordinates(zen_zbtn, fixed, 0, 0, &zx, &zy)) { zx = 0; zy = 0; }
     zw = gtk_widget_get_allocated_width(zen_zbtn);
@@ -1185,7 +1191,7 @@ static gboolean zen_cycle_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
 }
 
 static void zen_reapply(void) {  if (!zen_r1) return;
-  if (zen_entered && zen_state != 0 && zen_state != 4) {
+  if (zen_entered && zen_state != 0 && zen_state != 3) {
     gtk_widget_show(zen_r1);
     zen_set_r1(1);
     if (zen_state >= 2) {
@@ -1198,7 +1204,7 @@ static void zen_reapply(void) {  if (!zen_r1) return;
     if (zen_r2) gtk_widget_hide(zen_r2);
     g_print("ZREAPPLY: panel hidden, stage=%d\n", zen_state);
   }
-  if (zen_entered && zen_state == 4 && GTK_IS_WIDGET(zen_zbtn)) {
+  if (zen_entered && zen_state == 3 && GTK_IS_WIDGET(zen_zbtn)) {
     int zx = 0, zy = 0, zw = 0;
     if (!gtk_widget_translate_coordinates(zen_zbtn, fixed, 0, 0, &zx, &zy)) { zx = 0; zy = 0; }
     zw = gtk_widget_get_allocated_width(zen_zbtn);
@@ -1213,7 +1219,8 @@ static gboolean zen_stage_restore_idle(gpointer data) {  (void)data;
   FILE *zrf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "r");
   if (zrf) {
     int zv = -1;
-    if (fscanf(zrf, "%d", &zv) == 1 && zv >= 0 && zv <= 4) {
+    if (fscanf(zrf, "%d", &zv) == 1 && zv >= 0 && zv <= 3) {
+      if (zv == 4) zv = 3;  /* staryy Z4 svorachivaem v novyy Z3 */
       zen_state = zv;
       zen_reapply();
       g_print("ZRESTORE: stage=%d\n", zv);
@@ -1564,7 +1571,7 @@ if (!zen_entered) sliders_grid_rows = 0;
     zen_reapply();
     gtk_widget_hide(vfo_panel);
     gtk_widget_hide(meter);
-    if (zen_mode >= 4 || zen_state == 3) {
+    if (zen_mode >= 3 || zen_state == 3) {
       gtk_fixed_move(GTK_FIXED(fixed), menu_b, bx + rx0b->width - MENU_WIDTH, by - VFO_HEIGHT / 2 - 2);
       gtk_fixed_move(GTK_FIXED(fixed), hide_b, bx + rx0b->width - MENU_WIDTH, by - VFO_HEIGHT - 4);
       gtk_widget_show(menu_b); gtk_widget_show(hide_b);
@@ -1609,14 +1616,14 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     gtk_widget_hide(menu_b); gtk_widget_hide(hide_b);
     gtk_button_set_label(GTK_BUTTON(zen_b), "Z1");
     radio_reconfigure();
-  } else if (zen_mode < 4) {
+  } else if (zen_mode < 3) {
     zen_mode++;
     toolbar_rows = (zen_mode >= 2) ? zen_old_tool : 0;
     slider_rows = (zen_mode >= 3) ? zen_old_slid : 0;
-    const char *zl = (zen_mode == 2) ? "Z2" : (zen_mode == 3) ? "Z3" : "Z4";
+    const char *zl = (zen_mode == 2) ? "Z2" : "Z3";
     gtk_button_set_label(GTK_BUTTON(zen_b), zl);
     if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), zl); }
-    if (zen_mode == 4 && GTK_IS_WIDGET(thetis_bar)) {
+    if (zen_mode == 3 && GTK_IS_WIDGET(thetis_bar)) {
       int mbx = 0, mby = 0, mbw = 0;
       gtk_container_child_get(GTK_CONTAINER(fixed), thetis_bar, "x", &mbx, "y", &mby, NULL);
       mbw = gtk_widget_get_allocated_width(thetis_bar);
