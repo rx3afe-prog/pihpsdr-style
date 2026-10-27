@@ -74,13 +74,69 @@ GtkWidget *top_window = NULL;
 // ZFREQ: digital scale in the title bar
 //
 static GtkWidget *hfreq_label = NULL;
+//
+// HEADERCFG: tunable header scale appearance
+//
+double hfreq_font_size = 22.0;
+char hfreq_color_hex[16] = "#e01010";
+char hfreq_tail_hex[16] = "#006400";
+
+static GtkCssProvider *hfreq_css = NULL;
+
+void hfreq_css_apply(void) {
+  char css[256];
+  if (hfreq_label == NULL) return;
+  if (hfreq_css != NULL) {
+    gtk_style_context_remove_provider(gtk_widget_get_style_context(hfreq_label),
+        GTK_STYLE_PROVIDER(hfreq_css));
+    g_object_unref(hfreq_css);
+  }
+  hfreq_css = gtk_css_provider_new();
+  g_snprintf(css, sizeof(css),
+      "#hfreq_label { font-size: %.0fpx; font-weight: bold; color: %s; }",
+      hfreq_font_size, hfreq_color_hex);
+  gtk_css_provider_load_from_data(hfreq_css, css, -1, NULL);
+  gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_label),
+      GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
+void hfreq_conf_save(void) {
+  FILE *f = fopen("header_style.props", "w");
+  if (f == NULL) return;
+  fprintf(f, "size=%g\n", hfreq_font_size);
+  fprintf(f, "freq=%s\n", hfreq_color_hex);
+  fprintf(f, "tail=%s\n", hfreq_tail_hex);
+  fclose(f);
+}
+
+extern void pan_text_load_conf(void);
+
+void hfreq_conf_load(void) {
+  char line[128];
+  FILE *f = fopen("header_style.props", "r");
+  if (f == NULL) return;
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (strncmp(line, "size=", 5) == 0) {
+      double v = atof(line + 5);
+      if (v >= 12.0 && v <= 48.0) hfreq_font_size = v;
+    } else if (strncmp(line, "freq=", 5) == 0) {
+      g_strlcpy(hfreq_color_hex, line + 5, sizeof(hfreq_color_hex));
+      g_strchomp(hfreq_color_hex);
+    } else if (strncmp(line, "tail=", 5) == 0) {
+      g_strlcpy(hfreq_tail_hex, line + 5, sizeof(hfreq_tail_hex));
+      g_strchomp(hfreq_tail_hex);
+    }
+  }
+  fclose(f);
+}
+
 
 static gboolean hfreq_update_cb(gpointer data) {
   char buf[64];
   if (hfreq_label != NULL && GTK_IS_WIDGET(hfreq_label)) {
     long long f = vfo[VFO_A].frequency;
-    g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"#006400\">.%03lld</span>",
-               f / 1000000LL, (f / 1000LL) % 1000LL, f % 1000LL);
+    g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"%s\">.%03lld</span>",
+               f / 1000000LL, (f / 1000LL) % 1000LL, hfreq_tail_hex, f % 1000LL);
     gtk_label_set_markup(GTK_LABEL(hfreq_label), buf);
   }
   return G_SOURCE_CONTINUE;
@@ -171,7 +227,7 @@ void zen_geom_save(void) {
 }
 
 static gboolean main_delete (GtkWidget *widget) {
-  zen_geom_save();
+  zen_geom_save();  // ZGEOMFIX: единственное место сохранения, размер ещё реальный
   if (radio != NULL) {
     radio_stop_program();
   }
@@ -286,14 +342,11 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   //
   // ZFREQ: custom title bar with digital scale and buttons
   //
+  hfreq_conf_load();
+  pan_text_load_conf();
   hfreq_label = gtk_label_new("0.000.000");
   gtk_widget_set_name(hfreq_label, "hfreq_label");
-  GtkCssProvider *hfreq_css = gtk_css_provider_new();
-  gtk_css_provider_load_from_data(hfreq_css,
-      "#hfreq_label { font-size: 22px; font-weight: bold; color: #e01010; }",
-      -1, NULL);
-  gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_label),
-      GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  hfreq_css_apply();
   GtkWidget *hbar = gtk_header_bar_new();
     gtk_widget_set_margin_start(hfreq_label, 19);
   gtk_header_bar_pack_start(GTK_HEADER_BAR(hbar), hfreq_label);

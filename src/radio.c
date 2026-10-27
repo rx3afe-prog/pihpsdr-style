@@ -1917,7 +1917,6 @@ void radio_stop_program(void) {
 #endif
   }
 
-  zen_geom_save();
   radio_save_state();
   t_print("%s: radio state saved\n", __func__);
 }

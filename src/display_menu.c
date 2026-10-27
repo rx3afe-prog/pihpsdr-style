@@ -234,7 +234,7 @@ extern GdkRGBA pan_freq_color;
 static void pan_text_save_conf(void) {
   FILE *f;
   char path[512];
-  snprintf(path, sizeof(path), "%s/piHPSDR-build-ru/panadapter_grid.conf", g_get_home_dir());
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
   f = fopen(path, "w");
   if (f == NULL) { return; }
   fprintf(f, "use_custom_color=%d\n", pan_grid_use_custom_color);
@@ -254,6 +254,57 @@ static void pan_text_save_conf(void) {
   fprintf(f, "freq_color_g=%.4f\n", pan_freq_color.green);
   fprintf(f, "freq_color_b=%.4f\n", pan_freq_color.blue);
   fprintf(f, "freq_color_a=%.4f\n", pan_freq_color.alpha);
+  fprintf(f, "vgrid_use_custom=%d\n", pan_vgrid_use_custom_color);
+  fprintf(f, "vgrid_r=%.4f\n", pan_vgrid_custom_color.red);
+  fprintf(f, "vgrid_g=%.4f\n", pan_vgrid_custom_color.green);
+  fprintf(f, "vgrid_b=%.4f\n", pan_vgrid_custom_color.blue);
+  fprintf(f, "vgrid_a=%.4f\n", pan_vgrid_custom_color.alpha);
+  fclose(f);
+}
+
+
+//
+// UISTYLE: restore cosmetics from panadapter_grid.conf at startup
+//
+void pan_text_load_conf(void) {
+  char path[512], line[256];
+  FILE *f;
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
+  f = fopen(path, "r");
+  if (f == NULL) { return; }
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (sscanf(line, "use_custom_color=%d", &pan_grid_use_custom_color) == 1) {
+    } else if (sscanf(line, "width=%lf", &pan_grid_width) == 1) {
+      if (pan_grid_width < 0.5) pan_grid_width = 0.5;
+      if (pan_grid_width > 10.0) pan_grid_width = 10.0;
+    } else if (sscanf(line, "brightness=%lf", &pan_grid_brightness) == 1) {
+      if (pan_grid_brightness < 0.1) pan_grid_brightness = 0.1;
+      if (pan_grid_brightness > 2.0) pan_grid_brightness = 2.0;
+    } else if (sscanf(line, "color_r=%lf", &pan_grid_custom_color.red) == 1) {
+    } else if (sscanf(line, "color_g=%lf", &pan_grid_custom_color.green) == 1) {
+    } else if (sscanf(line, "color_b=%lf", &pan_grid_custom_color.blue) == 1) {
+    } else if (sscanf(line, "color_a=%lf", &pan_grid_custom_color.alpha) == 1) {
+    } else if (sscanf(line, "dbm_font_size=%lf", &pan_dbm_font_size) == 1) {
+      if (pan_dbm_font_size < 6.0) pan_dbm_font_size = 6.0;
+      if (pan_dbm_font_size > 40.0) pan_dbm_font_size = 40.0;
+    } else if (sscanf(line, "freq_font_size=%lf", &pan_freq_font_size) == 1) {
+      if (pan_freq_font_size < 6.0) pan_freq_font_size = 6.0;
+      if (pan_freq_font_size > 40.0) pan_freq_font_size = 40.0;
+    } else if (sscanf(line, "dbm_color_r=%lf", &pan_dbm_color.red) == 1) {
+    } else if (sscanf(line, "dbm_color_g=%lf", &pan_dbm_color.green) == 1) {
+    } else if (sscanf(line, "dbm_color_b=%lf", &pan_dbm_color.blue) == 1) {
+    } else if (sscanf(line, "dbm_color_a=%lf", &pan_dbm_color.alpha) == 1) {
+    } else if (sscanf(line, "freq_color_r=%lf", &pan_freq_color.red) == 1) {
+    } else if (sscanf(line, "freq_color_g=%lf", &pan_freq_color.green) == 1) {
+    } else if (sscanf(line, "freq_color_b=%lf", &pan_freq_color.blue) == 1) {
+    } else if (sscanf(line, "freq_color_a=%lf", &pan_freq_color.alpha) == 1) {
+    } else if (sscanf(line, "vgrid_use_custom=%d", &pan_vgrid_use_custom_color) == 1) {
+    } else if (sscanf(line, "vgrid_r=%lf", &pan_vgrid_custom_color.red) == 1) {
+    } else if (sscanf(line, "vgrid_g=%lf", &pan_vgrid_custom_color.green) == 1) {
+    } else if (sscanf(line, "vgrid_b=%lf", &pan_vgrid_custom_color.blue) == 1) {
+    } else if (sscanf(line, "vgrid_a=%lf", &pan_vgrid_custom_color.alpha) == 1) {
+    }
+  }
   fclose(f);
 }
 
@@ -433,12 +484,58 @@ static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
   gtk_widget_show_all(dlg);
 }
+
+//
+// HEADERCFG PATCH: header scale settings
+//
+extern double hfreq_font_size;
+extern char hfreq_color_hex[];
+extern char hfreq_tail_hex[];
+extern void hfreq_css_apply(void);
+extern void hfreq_conf_save(void);
+
+static void hfreq_size_cb(GtkWidget *widget, gpointer data) {
+  hfreq_font_size = gtk_range_get_value(GTK_RANGE(widget));
+  hfreq_css_apply();
+  hfreq_conf_save();
+}
+
+static void hfreq_color_pick_cb(GtkWidget *widget, gpointer data) {
+  int which = GPOINTER_TO_INT(data);
+  GdkRGBA color;
+  GtkWidget *dialog;
+  gboolean ok;
+  if (which) {
+    ok = gdk_rgba_parse(&color, hfreq_tail_hex);
+  } else {
+    ok = gdk_rgba_parse(&color, hfreq_color_hex);
+  }
+  if (!ok) {
+    color.red = which ? 0.0 : 0.88;
+    color.green = which ? 0.4 : 0.06;
+    color.blue = which ? 0.0 : 0.06;
+    color.alpha = 1.0;
+  }
+  dialog = gtk_color_chooser_dialog_new(which ? "Header Tail Color" : "Header Freq Color", NULL);
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
+    gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+    g_snprintf(which ? hfreq_tail_hex : hfreq_color_hex, 16, "#%02x%02x%02x",
+        (int)(color.red * 255.0 + 0.5),
+        (int)(color.green * 255.0 + 0.5),
+        (int)(color.blue * 255.0 + 0.5));
+    hfreq_css_apply();
+    hfreq_conf_save();
+  }
+  gtk_widget_destroy(dialog);
+}
+
 static void pan_text_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   GtkWidget *dlg = gtk_dialog_new();
   GtkWidget *cg = gtk_grid_new();
   GtkWidget *l, *w;
   gtk_window_set_title(GTK_WINDOW(dlg), "Panadapter Text");
-  gtk_window_set_default_size(GTK_WINDOW(dlg), 380, 240);
+  gtk_window_set_default_size(GTK_WINDOW(dlg), 380, 300);
   gtk_grid_set_row_spacing(GTK_GRID(cg), 5);
   gtk_grid_set_column_spacing(GTK_GRID(cg), 5);
   l = gtk_label_new("dBm Font Size");
@@ -459,6 +556,20 @@ static void pan_text_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   w = gtk_button_new_with_label("Freq Color");
   gtk_grid_attach(GTK_GRID(cg), w, 1, 2, 1, 1);
   g_signal_connect(w, "clicked", G_CALLBACK(pan_text_color_cb), GINT_TO_POINTER(1));
+  // HEADERCFG: header scale
+  l = gtk_label_new("Header Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 3, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 12.0, 48.0, 1.0);
+  gtk_range_set_value(GTK_RANGE(w), hfreq_font_size);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 3, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(hfreq_size_cb), NULL);
+  w = gtk_button_new_with_label("Header Freq Color");
+  gtk_grid_attach(GTK_GRID(cg), w, 0, 4, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(0));
+  w = gtk_button_new_with_label("Header Tail Color");
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 4, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(1));
   gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
   gtk_widget_show_all(dlg);
 }
