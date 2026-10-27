@@ -19,6 +19,7 @@
 
 #include <gtk/gtk.h>
 extern void zen_geom_save(void);
+extern int zen_geom_reapply(gpointer data);  // ZGEOMFIX
 #include <math.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -2514,6 +2515,7 @@ void radio_start_radio(void) {
   radio_restore_state();
   radio_change_region(region);
   radio_create_visual();
+  zen_geom_reapply(NULL);  // ZGEOMFIX: вернуть сохранённую геометрию после построения радио
   radio_reconfigure_screen();
 #ifdef GPIO
   gpio_set_orion_options();
@@ -5006,6 +5008,7 @@ int radio_client_start(gpointer data) {
   radio_restore_state();
   send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[display_size]);
   radio_create_visual();
+  zen_geom_reapply(NULL);  // ZGEOMFIX: вернуть сохранённую геометрию после построения радио
   radio_reconfigure_screen();
 #ifdef GPIO
   gpio_set_orion_options();
