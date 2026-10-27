@@ -1,0 +1,29 @@
+To make a "release", you need a working pihpsdr executable
+in your pihpsdr directory. 
+
+Then, simply do "make release". This creates the tar file
+
+pihpsdr-GIT_VERSION.tar
+
+where GIT_VERSION expands to the current git version.
+
+The tar file contains the "pihpsdr" directory inside
+the "release" directory, with the pihpsdr executable
+added.
+
+Recommended release flow:
+
+- develop and merge features on master
+- create a release branch named Rel-x.y at feature freeze
+- accept only bug fixes and release notes updates on Rel-x.y
+- create an annotated tag vX.Y.ZZ on the release branch
+- run "make release" from the tagged commit to create the tarball
+- publish a GitHub Release for that tag and attach the tarball
+- merge or cherry-pick release fixes back to master
+
+Version guidance:
+
+- use the tag format v0.0.00, with a two-digit patch component
+- use vX.Y.00 for a feature release
+- use vX.Y.ZZ for later bug-fix releases from the same Rel-x.y branch
+- non-tag builds include the nearest tag plus commit distance and hash

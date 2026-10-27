@@ -1,0 +1,69 @@
+/* Copyright (C)
+* 2016 Steve Wilson <wevets@gmail.com>
+* 2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#ifndef _RIGCTL_H_
+#define _RIGCTL_H_
+
+#include <gtk/gtk.h>
+#include <termios.h>
+
+struct _SERIALPORT {
+  //
+  // parity and bits are not included, since we
+  // always use 8 bits and "no parity"
+  //
+  char port[64];    // e.g. "/dev/ttyACM0"
+  speed_t  speed;   // baud rate (encoded as a speed_t)
+  int  enable;      // enabled for CAT/ANDROMEDA/PTT ?
+  int  andromeda;   // flag for handling ANDROMEDA console
+  int  g2;          // This port is used for G2-internal communication
+  int  autoreporting;
+};
+
+typedef struct _SERIALPORT SERIALPORT;
+
+extern char predef_cwtxt[5][256];
+extern char predef_call[256];
+
+#define MAX_SERIAL 3
+extern SERIALPORT SerialPorts[MAX_SERIAL + 1]; // one extra for "PTT"
+extern gboolean rigctl_debug;
+
+extern void launch_tcp_rigctl (void);
+extern int launch_serial_rigctl (int id);
+extern int launch_serial_ptt (int id);
+extern void disable_serial_rigctl (int id);
+extern void disable_serial_ptt (int id);
+extern int rigctl_tcp_running(void);
+extern void  shutdown_tcp_rigctl(void);
+extern void rigctl_save_state(void);
+extern void rigctl_restore_state(void);
+extern void rigctl_start_cw_thread(void);
+extern void rigctl_purge_cw();
+extern void rigctl_queue_cw_text(const int pos);
+extern void rigctl_queue_cw_char(const char c);
+extern void rigctl_queue_cw_string(const char *str);
+
+extern int cat_control;
+extern unsigned int rigctl_tcp_port;
+extern int rigctl_tcp_enable;
+extern int rigctl_tcp_andromeda;
+extern int rigctl_tcp_autoreporting;
+
+#endif // RIGCTL_H

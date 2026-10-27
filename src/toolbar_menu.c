@@ -1,0 +1,102 @@
+/* Copyright (C)
+*  2016 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#include <gtk/gtk.h>
+#include <stdio.h>
+#include <string.h>
+
+#include "action_dialog.h"
+#include "actions.h"
+#include "gpio.h"
+#include "new_menu.h"
+#include "radio.h"
+#include "toolbar.h"
+
+static GtkWidget *dialog = NULL;
+
+static void cleanup(void) {
+  if (dialog != NULL) {
+    GtkWidget *tmp = dialog;
+    dialog = NULL;
+    gtk_widget_destroy(tmp);
+    sub_menu = NULL;
+    active_menu  = NO_MENU;
+    radio_save_state();
+  }
+}
+
+static gboolean close_cb(void) {
+  cleanup();
+  return TRUE;
+}
+
+static gboolean switch_cb(GtkWidget *widget, GdkEvent *event, gpointer data) {
+  enum ACTION *action = (enum ACTION *) data;
+  int new = action_dialog(dialog, AT_BTN, *action);
+  gtk_button_set_label(GTK_BUTTON(widget), ActionTable[new].button_str);
+  *action = new;
+  update_toolbar_labels();
+  return TRUE;
+}
+
+void toolbar_menu(GtkWidget *parent) {
+  GtkWidget *widget;
+  dialog = gtk_dialog_new();
+  gtk_window_set_transient_for(GTK_WINDOW(dialog), GTK_WINDOW(toolbar_menu_parent(parent)));
+  GtkWidget *headerbar = gtk_header_bar_new();
+  gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
+  gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
+  gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), "piHPSDR-Improved - Toolbar configuration");
+  g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
+  g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
+  GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  GtkWidget *grid = gtk_grid_new();
+  gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
+  gtk_grid_set_row_homogeneous(GTK_GRID(grid), FALSE);
+  gtk_grid_set_column_spacing (GTK_GRID(grid), 5);
+  gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
+  gtk_widget_set_name(close_b, "close_button");
+  g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
+  gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 3, 1);
+
+  //
+  // Show as many buttons per row as the toolbar currently displays,
+  // the rightmost one is hard-wired to FUNCTION
+  //
+  for (int tbfunc = 0; tbfunc < MAX_TB_FUNCTIONS; tbfunc++) {
+    for (int i = 0; i < tb_buttons; i++) {
+      if (i == tb_buttons - 1) {
+        gchar text[16];
+        snprintf(text, sizeof(text), "FNC(%d)", tbfunc);
+        widget = gtk_button_new_with_label(text);
+      } else {
+        widget = gtk_button_new_with_label(ActionTable[tb_actions[tbfunc][i]].button_str);
+        g_signal_connect(widget, "button-press-event", G_CALLBACK(switch_cb), (gpointer) &tb_actions[tbfunc][i]);
+      }
+
+      gtk_widget_set_name(widget, "small_button");
+      gtk_grid_attach(GTK_GRID(grid), widget, i, MAX_TB_FUNCTIONS - tbfunc, 1, 1);
+    }
+  }
+
+  gtk_container_add(GTK_CONTAINER(content), grid);
+  sub_menu = dialog;
+  gtk_widget_show_all(dialog);
+}

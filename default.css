@@ -1,0 +1,37 @@
+/* Серые меню и диалоги */
+dialog {
+  background-color: #d6d6d6;
+}
+dialog label {
+  color: #1a1a1a;
+}
+dialog button {
+  background-image: none;
+  background-color: #cfcfcf;
+  color: #1a1a1a;
+  border: 1px solid #9a9a9a;
+  border-radius: 4px;
+}
+dialog combobox, dialog entry {
+  background-color: #cfcfcf;
+  color: #1a1a1a;
+}
+
+/* Фон главного окна — светло-серый.
+   Панорама и водопад не тронутся: они рисуют себя сами */
+window {
+  background-color: #c9c9c9;
+}
+
+/* Надписи (Zoom, AGC, Mic и т.д.) — тёмные, жирные, на сером читаются */
+label {
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+/* Кнопки главного окна — тёмно-синий текст */
+button {
+  color: #16337a;
+  font-weight: 700;
+}

@@ -1,0 +1,30 @@
+{
+  "_comment": "piHPSDR 60m band plan. frequency/width are in Hz. 'access' is \"TX\" (transmit allowed, default) or \"RX\" (receive-only, e.g. VOLMET; TX is never allowed). 'label' is drawn on each segment; 'colour' is the [red, green, blue, alpha] fill in 0.0-1.0 (alpha 0 means use the theme's pan_60m colour); 'label_colour' is the [red, green, blue, alpha] label text colour in 0.0-1.0 (alpha 0 means use the theme's pan_text colour). Edit and use the Reload menu button to apply.",
+  "regions": {
+    "UK": [
+      {"frequency": 5261250, "width": 5500, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5280000, "width": 8000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5290250, "width": 3500, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5302500, "width": 9000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5318000, "width": 10000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5335500, "width": 5000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5356000, "width": 4000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5368250, "width": 12500, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5380000, "width": 4000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5398250, "width": 6500, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5405000, "width": 3000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5451500, "width": 3000, "access": "RX", "label": "RAF Volmet", "colour": [0.000, 0.000, 1.000, 0.500], "label_colour": [0.000, 0.900, 1.000, 1.000]},
+      {"frequency": 5506500, "width": 3000, "access": "RX", "label": "Shannon Volmet", "colour": [0.000, 0.000, 1.000, 0.500], "label_colour": [0.000, 0.900, 1.000, 1.000]}
+    ],
+    "OTHER": [
+      {"frequency": 5332000, "width": 2800, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5348000, "width": 2800, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5359000, "width": 15000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5373000, "width": 2800, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]},
+      {"frequency": 5405000, "width": 2800, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]}
+    ],
+    "WRC15": [
+      {"frequency": 5359000, "width": 15000, "access": "TX", "label": "", "colour": [0.000, 0.000, 0.000, 0.000], "label_colour": [0.000, 0.000, 0.000, 0.000]}
+    ]
+  }
+}

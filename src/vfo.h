@@ -1,0 +1,138 @@
+/* Copyright (C)
+* 2015 - John Melton, G0ORX/N6LYT
+* 2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#ifndef _VFO_H_
+#define _VFO_H_
+
+#include <gtk/gtk.h>
+#include "appearance.h"
+
+#include "receiver.h"
+#include "mode.h"
+
+enum _vfo_enum {
+  VFO_A = 0,
+  VFO_B,
+  MAX_VFOS
+};
+
+struct _vfo {
+  //
+  // Band data
+  //
+  int band;
+  int bandstack;
+  //
+  // Frequency data,including CTUN, RIT, XIT
+  //
+  long long frequency;
+  int ctun;
+  long long ctun_frequency;
+
+  int rit_enabled;
+  int rit_step;
+  long long rit;
+  int xit_enabled;
+  long long xit;
+
+  long long lo;
+  long long offset;
+
+  //
+  // Mode data and step size
+  //
+  int mode;
+  int step;
+
+  //
+  // Filter data
+  //
+  int filter;
+  int  deviation;         // only for FMN
+  int cwAudioPeakFilter;  // only for CWU/CWL
+
+  //
+  // temporary storage for direct "NumPad" frequency entry
+  //
+  char entered_frequency[16];  // need 13, but rounded up to next multiple of 4
+
+};
+
+extern struct _vfo vfo[MAX_VFOS];
+
+#define STEPS 17
+extern char *step_labels[];
+
+//
+// Global functions declared in vfo.h start with "vfo_"
+//
+extern GtkWidget* vfo_init(int width, int height);
+extern int        vfo_id_get_stepindex(int id);
+extern void       vfo_id_set_step_from_index(int id, int index);
+extern int        vfo_get_step_from_index(int index);
+extern void       vfo_id_cwpeak_changed(int id, int p);
+extern void       vfo_cwpeak_changed(int p);
+extern void       vfo_step(int steps);
+extern void       vfo_id_step(int id, int steps);
+extern void       vfo_set_rit_step(int step);
+extern void       vfo_id_set_rit_step(int id, int step);
+extern void       vfo_id_move(int id, long long hz, int round);
+extern void       vfo_id_move_to(int id, long long hz, int round);
+extern void       vfo_update(void);
+extern void       vfo_filter_edges(int id, int *low, int *high);
+extern int        vfo_b_dx(const VFO_BAR_LAYOUT *lay);
+extern void       vfo_save_state(void);
+extern void       vfo_rx2_save_band(void);
+extern void       vfo_restore_state(void);
+extern void       modesettings_save_state(void);
+extern void       modesettings_restore_state(void);
+extern void       vfo_id_band_changed(int id, int b);
+extern void       vfo_id_bandstack_changed(int id, int b);
+extern void       vfo_bandstack_changed(int b);
+extern void       vfo_id_mode_changed(int id, int m);
+extern void       vfo_mode_changed(int m);
+extern void       vfo_id_filter_changed(int id, int f);
+extern void       vfo_filter_changed(int f);
+extern void       vfo_id_deviation_changed(int id, int dev);
+extern void       vfo_deviation_changed(int dev);
+extern void       vfo_a_to_b(void);
+extern void       vfo_b_to_a(void);
+extern void       vfo_a_swap_b(void);
+extern int        vfo_get_tx_vfo(void);
+extern int        vfo_get_tx_mode(void);
+extern long long  vfo_get_tx_freq(void);
+extern void       vfo_xvtr_changed(void);
+extern void       vfo_xit_toggle(void);
+extern void       vfo_id_xit_toggle(int id);
+extern void       vfo_xit_incr(int incr);
+extern void       vfo_id_xit_incr(int id, int incr);
+extern void       vfo_xit_onoff(int enable);
+extern void       vfo_id_xit_onoff(int id, int enable);
+extern void       vfo_xit_value(long long value);
+extern void       vfo_id_xit_value(int id, long long value);
+extern void       vfo_id_rit_toggle(int id);
+extern void       vfo_id_rit_onoff(int id, int enable);
+extern void       vfo_id_rit_incr(int id, int incr);
+extern void       vfo_id_rit_value(int id, long long value);
+extern void       vfo_id_set_frequency(int id, long long f);
+extern void       vfo_id_ctun_update(int id, int state);
+extern void       vfo_vfos_changed(void);
+extern void       vfo_num_pad(int val, int vfo);
+
+#endif
