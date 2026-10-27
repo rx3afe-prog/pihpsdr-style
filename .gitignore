@@ -19,3 +19,8 @@ dxhistory.db
 *.bak
 fix_*.py
 80-34-28-4C-CF-9B.props
+dxhistory.db
+dxhistory.db-shm
+dxhistory.db-wal
+*.db-wal
+*.db-shm
