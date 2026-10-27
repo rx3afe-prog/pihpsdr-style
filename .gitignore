@@ -16,3 +16,5 @@ wdspWisdom*
 start-log*.txt
 zen.stage
 dxhistory.db
+*.bak
+fix_*.py
