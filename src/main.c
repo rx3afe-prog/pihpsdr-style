@@ -182,7 +182,7 @@ static void* wisdom_thread(void *arg) {
 // cppcheck-suppress constParameterCallback
 static int zen_geom_w = 0, zen_geom_h = 0, zen_geom_x = 0, zen_geom_y = 0;
 
-static int zen_geom_reapply(gpointer data) {
+int zen_geom_reapply(gpointer data) {  // ZGEOMFIX: не static — зовётся из radio.c после построения
   (void)data;
   if (zen_geom_w > 200) {
     gtk_window_resize(GTK_WINDOW(top_window), zen_geom_w, zen_geom_h);
@@ -224,6 +224,14 @@ void zen_geom_save(void) {
   fprintf(f, "%d %d %d %d\n", w, h, x, y);
   fclose(f);
   t_print("ZGEOM: save %dx%d at %d,%d\n", w, h, x, y);
+  // ZGEOMFIX: синхронизируемся с props радио — при выходе радио запишет
+  // эти цифры в display_width/display_height/display_size, и при следующем
+  // старте radio_create_visual построится под наш реальный размер.
+  if (display_size == 1) {  // трогаем только режим Custom
+    display_width[1]  = w;
+    display_height[1] = h;
+    t_print("ZGEOM: sync display_size[1] -> %dx%d\n", w, h);
+  }
 }
 
 static gboolean main_delete (GtkWidget *widget) {
