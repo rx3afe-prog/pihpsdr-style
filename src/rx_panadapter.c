@@ -574,7 +574,12 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_set_line_width(cr, PAN_LINE_THICK);
       cairo_stroke(cr);
       cairo_move_to(cr, 48.0, hang_y);
+      cairo_save(cr);
+      cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      cairo_set_font_size(cr, 14.0);
+      cairo_set_source_rgba(cr, COLOUR_AGC_HANG);
       cairo_show_text(cr, "-H");
+      cairo_restore(cr);
     }
 
     if (active) {
@@ -591,7 +596,12 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_set_line_width(cr, PAN_LINE_THICK);
     cairo_stroke(cr);
     cairo_move_to(cr, 48.0, knee_y);
+    cairo_save(cr);
+    cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+    cairo_set_font_size(cr, 14.0);
+    cairo_set_source_rgba(cr, COLOUR_AGC_LABEL);
     cairo_show_text(cr, "-G");
+    cairo_restore(cr);
   }
 
   // cursor
