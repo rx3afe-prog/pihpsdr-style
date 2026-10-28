@@ -20,6 +20,22 @@
 #include <gtk/gtk.h>
 #include <math.h>
 
+//
+// Screen positions (pixels) of the AGC knee (G) and hang (H) lines
+// in the panadapter. Maintained by rx_panadapter.c, -1 = not drawn.
+//
+extern int pan_agc_knee_y;
+extern int pan_agc_hang_y;
+extern int pan_agc_right_x;
+extern double pan_dbm_per_pixel;
+
+// 0 = no AGC line drag, 1 = knee (G), 2 = hang (H)
+static int agc_drag = 0;
+
+// Grab distance in pixels around an AGC line
+#define AGC_GRAB_ZONE 12
+
+
 #include <wdsp.h>
 
 #include "agc.h"
@@ -110,7 +126,29 @@ gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointe
       has_movedx = has_movedy = FALSE;
       pressed = TRUE;
       drag_button = GDK_BUTTON_PRIMARY;
-    } else if (event->button == GDK_BUTTON_SECONDARY) {
+      //
+      // Grab an AGC line if the click is close to it.
+      //
+      agc_drag = 0;
+
+      if (from == 0
+          && rx->agc != AGC_OFF
+          && rx->agc != AGC_FIXED) {
+        int dk = last_y - pan_agc_knee_y;
+        int dh = last_y - pan_agc_hang_y;
+
+        if (dk < 0) { dk = -dk; }
+
+        if (dh < 0) { dh = -dh; }
+
+        if (pan_agc_knee_y >= 0 && dk <= AGC_GRAB_ZONE) {
+          agc_drag = 1;
+        } else if (pan_agc_hang_y >= 0 && dh <= AGC_GRAB_ZONE) {
+          agc_drag = 2;
+        }
+      }
+
+          } else if (event->button == GDK_BUTTON_SECONDARY) {
       //
       // Right button: remember the start point and wait.
       // A vertical drag started in the dBm scale area adjusts
@@ -173,6 +211,17 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
     //
   } else {
     if (pressed) {
+      //
+      // An AGC line drag ends here: do not treat it as a
+      // VFO click or a scale drag.
+      //
+      if (agc_drag) {
+        agc_drag = 0;
+        pressed = FALSE;
+        rx_save_state(rx);
+        return TRUE;
+      }
+
       int x = (int)(event->x + 0.5);
       int y = (int)(event->y + 0.5);
       int dy = (y - last_y) / 5;
@@ -295,6 +344,46 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
                                     &x,
                                     &y,
                                     &state);
+
+    //
+    // Dragging an AGC line (G or H): adjust the value and skip
+    // the usual VFO / scale handling.
+    //
+    if (agc_drag && from == 0) {
+      int dyagc = y - last_y;
+
+      if (dyagc != 0) {
+        double ddb = (double)dyagc * pan_dbm_per_pixel;
+        int lo_dB = rx->panadapter_low + 2;
+        int hi_dB = rx->panadapter_high - 2;
+
+        if (agc_drag == 1) {
+          rx->agc_thresh -= ddb;
+
+          if (rx->agc_thresh > hi_dB) { rx->agc_thresh = hi_dB; }
+
+          if (rx->agc_thresh < lo_dB) { rx->agc_thresh = lo_dB; }
+
+          SetRXAAGCThresh(rx->id, rx->agc_thresh, (double)rx->afft_size, (double)rx->sample_rate);
+          GetRXAAGCTop(rx->id, &rx->agc_gain);
+            extern void zen_agc_slider_sync(int id);
+            zen_agc_slider_sync(rx->id);
+        } else {
+          rx->agc_hang -= ddb;
+
+          if (rx->agc_hang > hi_dB) { rx->agc_hang = hi_dB; }
+
+          if (rx->agc_hang < lo_dB) { rx->agc_hang = lo_dB; }
+
+          SetRXAAGCHangLevel(rx->id, rx->agc_hang);
+        }
+
+        last_y = y;
+      }
+
+      return TRUE;
+    }
+
     //
     // Sometimes it turned out to be difficult to "jump" to a
     // new frequency by just clicking in the panadapter. Further analysis

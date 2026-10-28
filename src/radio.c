@@ -780,17 +780,32 @@ void radio_reconfigure_screen(void) {
   // Hide/Menu buttons live in the floating toolbar (not in "fixed")
   // while it is active, so leave their size/position alone here.
   //
-  if (!floating_toolbar && gtk_widget_get_parent(menu_b) == fixed) {
-    gtk_widget_set_size_request(hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
-    gtk_widget_set_size_request(menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
-    //
-    // Move Hide and Menu buttons to new position
-    //
-    if (!zen_status) {
-      gtk_fixed_move(GTK_FIXED(fixed), menu_b, display_width[display_size] - MENU_WIDTH, 0);
-      gtk_fixed_move(GTK_FIXED(fixed), hide_b, display_width[display_size] - MENU_WIDTH, VFO_HEIGHT / 2);
+  gtk_widget_set_size_request(hide_b, 26, 22);
+  gtk_widget_set_size_request(menu_b, 26, 22);
+  if (gtk_widget_get_parent(menu_b) != fixed) {
+    GtkWidget *par = gtk_widget_get_parent(menu_b);
+    if (par != NULL) {
+      g_object_ref(menu_b);
+      gtk_container_remove(GTK_CONTAINER(par), menu_b);
+      gtk_fixed_put(GTK_FIXED(fixed), menu_b, display_width[display_size] - 156, 4);
+      g_object_unref(menu_b);
     }
+  } else {
+    gtk_fixed_move(GTK_FIXED(fixed), menu_b, display_width[display_size] - 156, 4);
   }
+  if (gtk_widget_get_parent(hide_b) != fixed) {
+    GtkWidget *par = gtk_widget_get_parent(hide_b);
+    if (par != NULL) {
+      g_object_ref(hide_b);
+      gtk_container_remove(GTK_CONTAINER(par), hide_b);
+      gtk_fixed_put(GTK_FIXED(fixed), hide_b, display_width[display_size] - 124, 4);
+      g_object_unref(hide_b);
+    }
+  } else {
+    gtk_fixed_move(GTK_FIXED(fixed), hide_b, display_width[display_size] - 124, 4);
+  }
+  gtk_widget_hide(menu_b);
+  gtk_widget_hide(hide_b);
 
   //
   // Keep the Zen button glued to the lower-left corner of the waterfall
@@ -899,6 +914,7 @@ static gboolean thetis_page_cb(GtkWidget *w, GdkEventButton *e, gpointer d) {
 
 static GtkWidget *zen_r1 = NULL;
 static GtkWidget *zen_r2 = NULL;
+static GtkWidget *zen_agc_scale = NULL;
 static int zen_state = 0;
 static GtkWidget *zen_zbtn = NULL;
 
@@ -1111,17 +1127,8 @@ static void zen_set_r1(int show) {
 }
 
 static void zen_show_menuhide(int mx, int my, int hx, int hy) {
-  if (!GTK_IS_WIDGET(menu_b) || !GTK_IS_WIDGET(hide_b)) return;
-  g_object_ref(menu_b);
-  gtk_container_remove(GTK_CONTAINER(fixed), menu_b);
-  gtk_fixed_put(GTK_FIXED(fixed), menu_b, mx, my);
-  g_object_unref(menu_b);
-  g_object_ref(hide_b);
-  gtk_container_remove(GTK_CONTAINER(fixed), hide_b);
-  gtk_fixed_put(GTK_FIXED(fixed), hide_b, hx, hy);
-  g_object_unref(hide_b);
-  gtk_widget_show(menu_b); gtk_widget_show(hide_b);
-  g_print("Z4: menu показан на %d,%d\n", mx, my);
+  (void)mx; (void)my; (void)hx; (void)hy;
+  /* postoyannye knopki: nichego ne delaet */
 }
 
 extern void sliders_dock_top_right(int win_width);
@@ -1135,6 +1142,10 @@ int zen_bar_bottom_y(void) {
   return by2 + bh2 + 4;
 }
 
+/* ZMHPROTO: obyavleniya funkciy podnyatiya knopok M/H */
+static void zmh_raise(void);
+static gboolean zmh_startup_raise(gpointer data);
+
 static int zen_dock_retry(gpointer data) {
   (void)data;
   sliders_dock_top_right(display_width[display_size]);
@@ -1145,8 +1156,7 @@ static gboolean zen_cycle_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
   (void)w; (void)e; (void)data;
   if (zen_state == 3) {
     if (GTK_IS_WIDGET(menu_b) && gtk_widget_get_visible(menu_b)) {
-      gtk_widget_hide(menu_b);
-      gtk_widget_hide(hide_b);
+      /* ZMHFIX3: knopki postoyannye, ne pryachem */
       zen_state = 0;
       zen_set_r1(0);
       if (zen_r2) gtk_widget_hide(zen_r2);
@@ -1178,15 +1188,7 @@ static gboolean zen_cycle_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
     const char *zl = (zen_state == 3) ? "Z3" : (zen_state == 2) ? "Z2" : (zen_state == 1) ? "Z1" : "Z";
     gtk_button_set_label(GTK_BUTTON(zen_zbtn), zl);
   }
-  if (zen_state == 3 && GTK_IS_WIDGET(zen_zbtn)) {
-    int zx = 0, zy = 0, zw = 0;
-    if (!gtk_widget_translate_coordinates(zen_zbtn, fixed, 0, 0, &zx, &zy)) { zx = 0; zy = 0; }
-    zw = gtk_widget_get_allocated_width(zen_zbtn);
-    g_print("Z4MENU: zx=%d zy=%d zw=%d\n", zx, zy, zw); zen_show_menuhide(zx + zw + 6, zy,
-                      zx + zw + 6 + MENU_WIDTH + 6, zy);
-  } else {
-    gtk_widget_hide(menu_b); gtk_widget_hide(hide_b);
-  }
+  /* ZMHFIX3: knopki postoyannye, menuhide ne nuzhen */
   return TRUE;
 }
 
@@ -1311,6 +1313,7 @@ static void thetis_bar_create(void) {
   zen_slider_touch_setup(bw);
   zen_slider_round_setup(bw);
   if (active_receiver) gtk_range_set_value(GTK_RANGE(bw), (active_receiver->agc_gain + 20.0) / 1.4);
+  zen_agc_scale = bw;
 
   GtkWidget *pwr = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1);
   gtk_widget_set_name(pwr, "tb-slider");
@@ -1391,6 +1394,7 @@ static void thetis_bar_create(void) {
 static int zen_status = 1;
 static int zen_old_slid = 0;
 static int zen_old_tool = 0;
+static int zen_h_open = 0;
 static int zen_old_stack = -1;
 int zen_w = 0;
 
@@ -1571,18 +1575,13 @@ if (!zen_entered) sliders_grid_rows = 0;
     zen_reapply();
     gtk_widget_hide(vfo_panel);
     gtk_widget_hide(meter);
-    if (zen_mode >= 3 || zen_state == 3) {
-      gtk_fixed_move(GTK_FIXED(fixed), menu_b, bx + rx0b->width - MENU_WIDTH, by - VFO_HEIGHT / 2 - 2);
-      gtk_fixed_move(GTK_FIXED(fixed), hide_b, bx + rx0b->width - MENU_WIDTH, by - VFO_HEIGHT - 4);
-      gtk_widget_show(menu_b); gtk_widget_show(hide_b);
-    } else {
-      gtk_widget_hide(menu_b);
-      gtk_widget_hide(hide_b);
-    }
+    /* ZMHFIX2: postoyannye knopki, nichego ne peremeshchaem i ne pryachem */
   } else if (GTK_IS_WIDGET(thetis_bar)) {
     gtk_widget_hide(thetis_bar);
   }
 
+  /* ZMHPROC1: knopki podnimaet zmh_raise() */
+  zmh_raise();
   radio_reconfiguring = 0;
 }
 
@@ -1611,9 +1610,7 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     zen_meter_w = gtk_widget_get_allocated_width(meter);
     zen_meter_h = gtk_widget_get_allocated_height(meter);
     gtk_widget_hide(meter_b);
-    gtk_container_child_get(GTK_CONTAINER(fixed), menu_b, "x", &zen_menu_x, "y", &zen_menu_y, NULL);
-    gtk_container_child_get(GTK_CONTAINER(fixed), hide_b, "x", &zen_hide_x, "y", &zen_hide_y, NULL);
-    gtk_widget_hide(menu_b); gtk_widget_hide(hide_b);
+    /* ZMHFIX2: knopki postoyannye, ne sohranyaem i ne pryachem */
     gtk_button_set_label(GTK_BUTTON(zen_b), "Z1");
     radio_reconfigure();
   } else if (zen_mode < 3) {
@@ -1623,14 +1620,7 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     const char *zl = (zen_mode == 2) ? "Z2" : "Z3";
     gtk_button_set_label(GTK_BUTTON(zen_b), zl);
     if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), zl); }
-    if (zen_mode == 3 && GTK_IS_WIDGET(thetis_bar)) {
-      int mbx = 0, mby = 0, mbw = 0;
-      gtk_container_child_get(GTK_CONTAINER(fixed), thetis_bar, "x", &mbx, "y", &mby, NULL);
-      mbw = gtk_widget_get_allocated_width(thetis_bar);
-      gtk_fixed_move(GTK_FIXED(fixed), menu_b, mbx + mbw - MENU_WIDTH, mby - VFO_HEIGHT / 2 - 2);
-      gtk_fixed_move(GTK_FIXED(fixed), hide_b, mbx + mbw - MENU_WIDTH, mby - VFO_HEIGHT - 4);
-      gtk_widget_show(menu_b); gtk_widget_show(hide_b);
-    }
+    /* ZMHFIX2: vyzen_show_menuhide bolshe ne nuzhen */
     radio_reconfigure();
   } else {
     zen_status = 0;
@@ -1641,9 +1631,12 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     gtk_fixed_move(GTK_FIXED(fixed), meter, zen_meter_x, zen_meter_y);
     gtk_widget_set_size_request(meter, zen_meter_w, zen_meter_h);
     gtk_widget_show(vfo_panel); gtk_widget_show(meter);
-    gtk_fixed_move(GTK_FIXED(fixed), menu_b, zen_menu_x, zen_menu_y);
-    gtk_fixed_move(GTK_FIXED(fixed), hide_b, zen_hide_x, zen_hide_y);
-    gtk_widget_show(menu_b); gtk_widget_show(hide_b);
+    /* ZMHFIX2: knopki postoyannye, vozvrashaem tolko stil i pokaz */
+    gtk_widget_set_name(menu_b, "tb-btn");
+    gtk_widget_set_name(hide_b, "tb-btn");
+    gtk_widget_set_size_request(menu_b, 26, 22);
+    gtk_widget_set_size_request(hide_b, 26, 22);
+    gtk_widget_hide(menu_b); gtk_widget_hide(hide_b);
     if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), "Z"); }
     gtk_button_set_label(GTK_BUTTON(zen_b), "Z");
     radio_reconfigure(); radio_update_meter_b_visibility();
@@ -1659,27 +1652,20 @@ static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer 
     if (!duplex) { return TRUE; }
   }
 
-  if (hide_status == 0) {
-    //
-    // Hide everything but store old status
-    //
-    hide_status = 1;
-    gtk_button_set_label(GTK_BUTTON(hide_b), "Show");
-    old_slid = slider_rows;
-    old_tool = toolbar_rows;
-    toolbar_rows = slider_rows = 0;
-    radio_reconfigure();
-  } else {
-    //
-    // Re-display everything
-    //
-    hide_status = 0;
-    gtk_button_set_label(GTK_BUTTON(hide_b), "Hide");
-    slider_rows = old_slid;
-    toolbar_rows = old_tool;
-    radio_reconfigure();
-  }
 
+  if (slider_rows > 0) {
+    old_slid = slider_rows;
+    zen_old_slid = slider_rows;
+    slider_rows = 0;
+  } else if (zen_status) {
+    if (zen_old_slid <= 0) zen_old_slid = 1;
+    slider_rows = zen_old_slid;
+  } else {
+    zen_entered = 1;
+    if (old_slid <= 0) old_slid = 1;
+    slider_rows = old_slid;
+  }
+  radio_reconfigure();
   return TRUE;
 }
 
@@ -1716,17 +1702,17 @@ static void radio_create_visual(void) {
   // RX2 meter: same as RX1 meter, but extended metering is left of the dial
   meter_b = meter_init(1, METER_WIDTH, METER_HEIGHT, ADD_METER_WIDTH, ADD_METER_WIDTH);
   gtk_fixed_put(GTK_FIXED(fixed), meter_b, METER_B_X, METER_Y);
-  menu_b = gtk_button_new_with_label("Menu");
-  gtk_widget_set_name(menu_b, "menubutton");
-  gtk_widget_set_size_request (menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
+  menu_b = gtk_button_new_with_label("M");
+  gtk_widget_set_name(menu_b, "tb-btn");
+  gtk_widget_set_size_request (menu_b, 26, 22);
   g_signal_connect (menu_b, "button-press-event", G_CALLBACK(menu_cb), NULL) ;
-  gtk_fixed_put(GTK_FIXED(fixed), menu_b, my_width - MENU_WIDTH, y);
+  gtk_fixed_put(GTK_FIXED(fixed), menu_b, my_width - 156, 4);
   y += VFO_HEIGHT / 2;
-  hide_b = gtk_button_new_with_label("Hide");
-  gtk_widget_set_name(hide_b, "hidebutton");
-  gtk_widget_set_size_request (hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
+  hide_b = gtk_button_new_with_label("H");
+  gtk_widget_set_name(hide_b, "tb-btn");
+  gtk_widget_set_size_request (hide_b, 26, 22);
   g_signal_connect(hide_b, "button-press-event", G_CALLBACK(hideall_cb), NULL);
-  gtk_fixed_put(GTK_FIXED(fixed), hide_b, my_width - MENU_WIDTH, y);
+  gtk_fixed_put(GTK_FIXED(fixed), hide_b, my_width - 124, 4);
   y += VFO_HEIGHT / 2;
   rx_height = zen_status ? my_height : my_height - VFO_HEIGHT;
   if (zrc_last_w != my_width || zrc_last_h != rx_height) {
@@ -1878,6 +1864,8 @@ if (!zen_entered) sliders_grid_rows = 0;
     toolbar_show(y);
   }
 
+  zmh_raise();  /* ZMHFIXCALL: odna tochka pravki polozheniya */
+
   //
   // Now, if there should only one receiver be displayed
   // at startup, do the change. We must momentarily fake
@@ -1898,8 +1886,68 @@ if (!zen_entered) sliders_grid_rows = 0;
   }
 
   gtk_widget_show_all (top_window);             // ... this shows both the HPSDR and C25 preamp/att sliders
+  /* ZMHPROC2: zmh_raise() + startovyj tajmer */
+  zmh_raise();
+  g_timeout_add(100, zmh_startup_raise, NULL);
   radio_update_meter_b_visibility();
   g_idle_add(sliders_att_type_changed, NULL);   // ... and this hides the „wrong“ ones.
+}
+
+/* ZMHFN: svoi knopki M/H v titlebar, nichego ne perenosim */
+static GtkWidget *zmh_mb = NULL;
+static GtkWidget *zmh_hb = NULL;
+static GtkWidget *zmh_tb = NULL;
+
+static void zmh_raise(void) {
+  static int zrn = 0;
+  zrn++;
+  GtkWidget *tb = gtk_window_get_titlebar(GTK_WINDOW(top_window));
+  if (!(tb && GTK_IS_HEADER_BAR(tb))) {
+    if (zrn % 50 == 1) { g_print("ZMH6: titlebar=%s\n", tb ? G_OBJECT_TYPE_NAME(tb) : "NULL"); }
+    return;
+  }
+  if (zmh_tb != tb) {
+    zmh_tb = tb;
+    zmh_mb = NULL;
+    zmh_hb = NULL;
+  }
+  if (!zmh_mb) {
+    zmh_mb = gtk_button_new_with_label("МЕНЮ");
+    gtk_widget_set_name(zmh_mb, "zmh-btn");
+    gtk_widget_set_size_request(zmh_mb, 90, 32);
+    g_signal_connect(zmh_mb, "button-press-event", G_CALLBACK(menu_cb), NULL);
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), zmh_mb);
+    gtk_widget_show(zmh_mb);
+    g_print("ZMH6: M sozdana v titlebar\n");
+  }
+  if (!zmh_hb) {
+    zmh_hb = gtk_button_new_with_label("СКРЫТЬ");
+    gtk_widget_set_name(zmh_hb, "zmh-btn");
+    gtk_widget_set_size_request(zmh_hb, 90, 32);
+    g_signal_connect(zmh_hb, "button-press-event", G_CALLBACK(hideall_cb), NULL);
+    gtk_header_bar_pack_end(GTK_HEADER_BAR(tb), zmh_hb);
+    gtk_widget_show(zmh_hb);
+    g_print("ZMH6: H sozdana v titlebar\n");
+  }
+  { static GtkCssProvider *zcss = NULL;
+    if (!zcss) {
+      zcss = gtk_css_provider_new();
+      gtk_css_provider_load_from_data(zcss,
+        ".zmh-btn { font-size: 15px; min-width: 66px; min-height: 26px; }", -1, NULL);
+      gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(zcss), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+    }
+  }
+}
+
+/* ZMHTIMER: pervye 5 sekund posle starta podnimaem knopki povtorno */
+static gboolean zmh_startup_raise(gpointer data) {
+  static int n = 0;
+  (void)data;
+  zmh_raise();
+  n++;
+  if (n >= 50) { n = 0; return G_SOURCE_REMOVE; }
+  return G_SOURCE_CONTINUE;
 }
 
 void radio_stop_program(void) {
@@ -5415,4 +5463,13 @@ int compare_doubles(const void *a, const void *b) {
   if (arg1 > arg2) { return 1; }
 
   return 0;
+}
+
+void zen_agc_slider_sync(int id) {
+  if (!zen_agc_scale || !GTK_IS_WIDGET(zen_agc_scale)) return;
+  if (!receiver[id]) return;
+  double v = (receiver[id]->agc_gain + 20.0) / 1.4;
+  if (v < 0.0) v = 0.0;
+  if (v > 100.0) v = 100.0;
+  gtk_range_set_value(GTK_RANGE(zen_agc_scale), v);
 }

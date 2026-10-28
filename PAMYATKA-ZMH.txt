@@ -1,0 +1,36 @@
+=== ПАМЯТКА: КНОПКИ МЕНЮ И СКРЫТЬ (piHPSDR-style) ===
+Дата: 28.10.2026. Статус: РАБОТАЕТ, проверено запуском.
+
+ЧТО СДЕЛАНО:
+- Кнопки МЕНЮ (слева) и СКРЫТЬ (справа) создаются в заголовке окна
+  (GtkHeaderBar), крупные: 90x32, шрифт 15px (css-класс zmh-btn).
+- СКРЫТЬ сворачивает панель инструментов, повторное нажатие возвращает.
+
+ГДЕ КОД:
+- src/radio.c: функция zmh_raise() под меткой /* ZMHFN: ...
+  (создаёт СВОИ кнопки zmh_mb/zmh_hb прямо в titlebar).
+- Таймер-подстраховка: блок /* ZMHTIMER: ... (первые 5 сек повторяет).
+- Вызов: zmh_raise() в radio_create_visual, метка /* ZMHFIXCALL.
+- Старые кнопки menu_b/hide_b заменены на gtk_widget_hide(...) — их
+  НЕ переносить! Они пересоздаются и дают segfault (доказано gdb).
+
+ГЛАВНЫЙ УРОК:
+Перенос существующих кнопок в titlebar = падение SIGSEGV в
+g_object_ref (кнопки уже уничтожены при пересоздании визуала).
+Правильно: создавать свои кнопки внутри zmh_raise(), отслеживая
+смену заголовка по адресу (zmh_tb != tb).
+
+КОМАНДЫ:
+- Сборка:   cd ~/piHPSDR-style && rm -f src/radio.o && make
+- Запуск:   GDK_BACKEND=x11 ./pihpsdr
+- Лог:      ... | tee /tmp/zmh.log | grep ZMH6
+- Диагноз:  gdb -q -batch -ex run -ex "bt 25" --args ./pihpsdr
+
+GITHUB:
+- Аккаунт: есть (логин вписать сюда: rx3afe-prog)
+- Репозиторий: создать на github.com (New repository -> piHPSDR-style)
+- Токен: Settings -> Developer settings -> Personal access tokens,
+  галочка repo. Обычный пароль НЕ работает.
+- Шаги: git init && git add -A && git commit -m "..."
+  git remote add origin https://github.com/ЛОГИН/piHPSDR-style.git
+  git push -u origin master  (пароль = токен)

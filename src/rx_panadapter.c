@@ -72,6 +72,17 @@ double vfo_status_size_scale = 1.0;
 #include "transmitter.h"
 #include "vfo.h"
 
+//
+// Last drawn screen positions (pixels) of the AGC knee (G) and
+// hang (H) lines, plus the scale (dB per pixel). Used by receiver.c
+// to make these lines draggable with the mouse. -1 = not drawn.
+//
+int pan_agc_knee_y = -1;
+int pan_agc_hang_y = -1;
+int pan_agc_right_x = -1;
+double pan_dbm_per_pixel = 0.0;
+
+
 /* Create a new surface of the appropriate size to store our scribbles */
 static gboolean panadapter_configure_event_cb (GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
   RECEIVER *rx = (RECEIVER *)data;
@@ -314,6 +325,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   int panhi = rx->panadapter_high;
   int panlo = rx->panadapter_low;
   double dbm_per_line = (double)myheight / ((double)(panhi - panlo));
+  pan_dbm_per_pixel = (double)(panhi - panlo) / (double)myheight;
   cairo_set_line_width(cr, pan_grid_width);
   cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, pan_dbm_font_size * scalfac);
@@ -558,6 +570,13 @@ void rx_panadapter_update(RECEIVER *rx) {
     hang_y = floor((panhi - hang_y)
                    * (double) myheight
                    / (double) (panhi - panlo));
+    //
+    // Remember line positions for mouse dragging (receiver.c)
+    //
+    pan_agc_knee_y = (int) knee_y;
+    pan_agc_hang_y = (rx->agc != AGC_MEDIUM && rx->agc != AGC_FAST)
+                     ? (int) hang_y : -1;
+    pan_agc_right_x = (int)mywidth - 40;
 
     if (rx->agc != AGC_MEDIUM && rx->agc != AGC_FAST) {
       if (active) {
@@ -568,6 +587,15 @@ void rx_panadapter_update(RECEIVER *rx) {
 
       cairo_move_to(cr, 40.0, hang_y - 8.0);
       cairo_rectangle(cr, 40, hang_y - 8.0, 8.0, 8.0);
+      cairo_fill(cr);
+      cairo_rectangle(cr, mywidth - 48.0, hang_y - 8.0, 8.0, 8.0);
+      cairo_save(cr);
+      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      cairo_set_font_size(cr, 14.0);
+      cairo_move_to(cr, (double)mywidth - 36.0, hang_y + 5.0);
+      cairo_show_text(cr, "H");
+      cairo_restore(cr);
       cairo_fill(cr);
       cairo_move_to(cr, 40.0, hang_y);
       cairo_line_to(cr, (double)mywidth - 40.0, hang_y);
@@ -590,6 +618,15 @@ void rx_panadapter_update(RECEIVER *rx) {
 
     cairo_move_to(cr, 40.0, knee_y - 8.0);
     cairo_rectangle(cr, 40, knee_y - 8.0, 8.0, 8.0);
+    cairo_fill(cr);
+    cairo_rectangle(cr, mywidth - 48.0, knee_y - 8.0, 8.0, 8.0);
+      cairo_save(cr);
+      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+      cairo_set_font_size(cr, 14.0);
+      cairo_move_to(cr, (double)mywidth - 36.0, knee_y + 5.0);
+      cairo_show_text(cr, "G");
+      cairo_restore(cr);
     cairo_fill(cr);
     cairo_move_to(cr, 40.0, knee_y);
     cairo_line_to(cr, (double)mywidth - 40.0, knee_y);
