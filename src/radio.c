@@ -1510,7 +1510,7 @@ void radio_reconfigure(void) {
     gtk_fixed_put(GTK_FIXED(fixed), zen_b, zx, zy);
     g_object_unref(zen_b);
     if (zen_status) { gtk_widget_hide(zen_b); } // in zen the bar's Z takes over
-    else { gtk_widget_hide(zen_b); } // outside zen this is the way in
+    else { gtk_widget_show(zen_b); } // outside zen this is the way in
   }
 
   if (sliders_grid_rows > 0 && zen_status == 0) {
@@ -1613,6 +1613,11 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     /* ZMHFIX2: knopki postoyannye, ne sohranyaem i ne pryachem */
     gtk_button_set_label(GTK_BUTTON(zen_b), "Z1");
     radio_reconfigure();
+    zen_state = 1;
+    if (zen_r1) gtk_widget_show(zen_r1);
+    zen_set_r1(1);
+    { FILE *zsf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "w");
+      if (zsf) { fprintf(zsf, "%d", zen_state); fclose(zsf); } }
   } else if (zen_mode < 3) {
     zen_mode++;
     toolbar_rows = (zen_mode >= 2) ? zen_old_tool : 0;
@@ -1620,7 +1625,13 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     const char *zl = (zen_mode == 2) ? "Z2" : "Z3";
     gtk_button_set_label(GTK_BUTTON(zen_b), zl);
     if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), zl); }
-    /* ZMHFIX2: vyzen_show_menuhide bolshe ne nuzhen */
+    zen_state = zen_mode;
+    if (zen_r1) gtk_widget_show(zen_r1);
+    zen_set_r1(1);
+    if (zen_state >= 2) { if (zen_r2) gtk_widget_show(zen_r2); }
+    else if (zen_r2) { gtk_widget_hide(zen_r2); }
+    { FILE *zsf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "w");
+      if (zsf) { fprintf(zsf, "%d", zen_state); fclose(zsf); } }
     radio_reconfigure();
   } else {
     zen_status = 0;
@@ -1639,6 +1650,11 @@ static gboolean zen_cb (GtkWidget *w, GdkEventButton *e, gpointer d) {
     gtk_widget_hide(menu_b); gtk_widget_hide(hide_b);
     if (GTK_IS_WIDGET(zen_zbtn)) { gtk_button_set_label(GTK_BUTTON(zen_zbtn), "Z"); }
     gtk_button_set_label(GTK_BUTTON(zen_b), "Z");
+    zen_state = 0;
+    zen_set_r1(0);
+    if (zen_r2) gtk_widget_hide(zen_r2);
+    { FILE *zsf = fopen("/home/rx3afe/piHPSDR-style/zen.stage", "w");
+      if (zsf) { fprintf(zsf, "%d", zen_state); fclose(zsf); } }
     radio_reconfigure(); radio_update_meter_b_visibility();
   }
   return TRUE;
@@ -1695,7 +1711,7 @@ static void radio_create_visual(void) {
   meter = meter_init(0, METER_WIDTH, METER_HEIGHT, ADD_METER_WIDTH, METER_X0);
   gtk_fixed_put(GTK_FIXED(fixed), meter, METER_X, METER_Y);
   zen_b = gtk_button_new_with_label("Z");
-  gtk_widget_set_name(zen_b, "menubutton");
+  gtk_widget_set_name(zen_b, "tb-round");
   gtk_widget_set_size_request(zen_b, MENU_WIDTH / 2, VFO_HEIGHT / 4);
   g_signal_connect(zen_b, "button-press-event", G_CALLBACK(zen_cb), NULL);
   gtk_fixed_put(GTK_FIXED(fixed), zen_b, 0, my_height - VFO_HEIGHT / 2);

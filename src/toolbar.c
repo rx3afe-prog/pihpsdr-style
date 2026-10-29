@@ -502,7 +502,7 @@ void toolbar_destroy_floating(void) {
     if (floating_menu_b) {
       gtk_widget_set_size_request(floating_menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
       gtk_fixed_put(GTK_FIXED(fixed), floating_menu_b, display_width[display_size] - MENU_WIDTH, 0);
-      gtk_widget_show(floating_menu_b);
+      gtk_widget_hide(floating_menu_b);
       g_object_unref(floating_menu_b);
       floating_menu_b = NULL;
     }
@@ -510,7 +510,7 @@ void toolbar_destroy_floating(void) {
     if (floating_hide_b) {
       gtk_widget_set_size_request(floating_hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
       gtk_fixed_put(GTK_FIXED(fixed), floating_hide_b, display_width[display_size] - MENU_WIDTH, VFO_HEIGHT / 2);
-      gtk_widget_show(floating_hide_b);
+      gtk_widget_hide(floating_hide_b);
       g_object_unref(floating_hide_b);
       floating_hide_b = NULL;
     }
