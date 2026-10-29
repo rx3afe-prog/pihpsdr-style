@@ -1394,6 +1394,7 @@ static void thetis_bar_create(void) {
 static int zen_status = 0;
 static int zen_old_slid = 0;
 static int zen_old_tool = 0;
+static int toolbar_hidden = 0;
 static int zen_h_open = 0;
 static int zen_old_stack = -1;
 int zen_w = 0;
@@ -1430,7 +1431,7 @@ void radio_reconfigure(void) {
 
   int my_height = display_height[display_size];
   int my_width  = display_width[display_size];
-  rx_height = zen_status ? my_height : my_height - VFO_HEIGHT;
+  rx_height = (zen_status || toolbar_hidden) ? my_height : my_height - VFO_HEIGHT;
   if (zrc_last_w != my_width || zrc_last_h != rx_height) {
     t_print("%s: receivers=%d  %dx%d\n", __func__, receivers, my_width, rx_height);
     zrc_last_w = my_width;
@@ -1443,7 +1444,7 @@ void radio_reconfigure(void) {
 // [ZMH] убрано: ползунки показываем сразу, без зен-режима
   rx_height -= SLIDERS_HEIGHT * sliders_grid_rows;
   rx_height -= TOOLBAR_HEIGHT * active_toolbar_rows;
-  y = zen_status ? 0 : VFO_HEIGHT;
+  y = (zen_status || toolbar_hidden) ? 0 : VFO_HEIGHT;
 
   if (!floating_toolbar) {
     // must happen before the embedded sliders are created, this also destroys the floating sliders
@@ -1537,7 +1538,11 @@ void radio_reconfigure(void) {
     }
   } else if (floating_toolbar) {
     toolbar_destroy();
-    toolbar_create_floating(TOOLBAR_HEIGHT, menu_b, hide_b);
+    if (toolbar_hidden) {
+      toolbar_destroy_floating();
+    } else {
+      toolbar_create_floating(TOOLBAR_HEIGHT, menu_b, hide_b);
+    }
   } else if (toolbar_rows > 0) {
     toolbar_destroy_floating();
     toolbar_create(my_width, TOOLBAR_HEIGHT, toolbar_rows);
@@ -1556,7 +1561,7 @@ void radio_reconfigure(void) {
 
   // Thetis-style bottom bar: create once, show in zen mode above everything (added last, so on top).
   if (thetis_bar == NULL) { thetis_bar_create(); }
-  if (zen_status && receivers > 0) {
+  if (zen_status && receivers > 0 && !toolbar_hidden) {
     RECEIVER *rx0b = receiver[0];
     int win_w = gtk_widget_get_allocated_width(fixed);
     int bx = rx0b->x;
@@ -1571,7 +1576,7 @@ void radio_reconfigure(void) {
     } else {
       gtk_fixed_put(GTK_FIXED(fixed), thetis_bar, bx, by);
     }
-    gtk_widget_show(thetis_bar);
+      gtk_widget_show(thetis_bar);
     zen_reapply();
     gtk_widget_hide(vfo_panel);
     gtk_widget_hide(meter);
@@ -1580,6 +1585,16 @@ void radio_reconfigure(void) {
     gtk_widget_hide(thetis_bar);
   }
 
+  /* SKRYT: chistaya panorama vne zena — ubiraem verh s chastotami i meter */
+  if (zen_status == 0) {
+    if (toolbar_hidden) {
+      if (GTK_IS_WIDGET(vfo_panel)) { gtk_widget_hide(vfo_panel); }
+      if (GTK_IS_WIDGET(meter)) { gtk_widget_hide(meter); }
+    } else {
+      if (GTK_IS_WIDGET(vfo_panel)) { gtk_widget_show(vfo_panel); }
+      if (GTK_IS_WIDGET(meter)) { gtk_widget_show(meter); }
+    }
+  }
   /* ZMHPROC1: knopki podnimaet zmh_raise() */
   zmh_raise();
   radio_reconfiguring = 0;
@@ -1657,13 +1672,18 @@ static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer 
     old_slid = slider_rows;
     zen_old_slid = slider_rows;
     slider_rows = 0;
+    old_tool = toolbar_rows;
+    toolbar_rows = 0;
+    toolbar_hidden = 1;
   } else if (zen_status) {
     if (zen_old_slid <= 0) zen_old_slid = 1;
     slider_rows = zen_old_slid;
   } else {
-    zen_entered = 1;
     if (old_slid <= 0) old_slid = 1;
     slider_rows = old_slid;
+    if (old_tool <= 0) old_tool = 1;
+    toolbar_rows = old_tool;
+    toolbar_hidden = 0;
   }
   radio_reconfigure();
   return TRUE;
@@ -1714,7 +1734,7 @@ static void radio_create_visual(void) {
   g_signal_connect(hide_b, "button-press-event", G_CALLBACK(hideall_cb), NULL);
   gtk_fixed_put(GTK_FIXED(fixed), hide_b, my_width - 124, 4);
   y += VFO_HEIGHT / 2;
-  rx_height = zen_status ? my_height : my_height - VFO_HEIGHT;
+  rx_height = (zen_status || toolbar_hidden) ? my_height : my_height - VFO_HEIGHT;
   if (zrc_last_w != my_width || zrc_last_h != rx_height) {
     t_print("%s: receivers=%d  %dx%d\n", __func__, receivers, my_width, rx_height);
     zrc_last_w = my_width;
@@ -1857,11 +1877,13 @@ static void radio_create_visual(void) {
     y += SLIDERS_HEIGHT * sliders_grid_rows;
   }
 
-  if (floating_toolbar) {
+  if (floating_toolbar && !toolbar_hidden) {
     toolbar_create_floating(TOOLBAR_HEIGHT, menu_b, hide_b);
   } else if (toolbar_rows > 0) {
     toolbar_create(my_width, TOOLBAR_HEIGHT, toolbar_rows);
     toolbar_show(y);
+  } else if (floating_toolbar && toolbar_hidden) {
+    toolbar_destroy_floating();
   }
 
   zmh_raise();  /* ZMHFIXCALL: odna tochka pravki polozheniya */
@@ -1921,11 +1943,11 @@ static void zmh_raise(void) {
     g_print("ZMH6: M sozdana v titlebar\n");
   }
   if (!zmh_hb) {
-    zmh_hb = gtk_button_new_with_label("СКРЫТЬ");
+    zmh_hb = gtk_button_new_with_label("БАР");
     gtk_widget_set_name(zmh_hb, "zmh-btn");
     gtk_widget_set_size_request(zmh_hb, 90, 32);
     g_signal_connect(zmh_hb, "button-press-event", G_CALLBACK(hideall_cb), NULL);
-    gtk_header_bar_pack_end(GTK_HEADER_BAR(tb), zmh_hb);
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), zmh_hb);
     gtk_widget_show(zmh_hb);
     g_print("ZMH6: H sozdana v titlebar\n");
   }

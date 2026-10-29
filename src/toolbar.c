@@ -400,7 +400,9 @@ static void toolbar_floating_rebuild_sliders(int height) {
   sliders_create_floating(floating_grid, height, slider_rows);
 }
 
+static int dbg_float_n = 0;
 void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide_button) {
+  fprintf(stderr, "FLOATCREATE #%d: kto-to sozdaet plavayushchuyu panel\n", ++dbg_float_n);
   const char *button_css;
   int target_width;
 
@@ -451,20 +453,13 @@ void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide
   // ("menubutton"/"hidebutton") are left untouched so they keep their
   // distinct CSS styling.
   //
-  floating_menu_b = menu_button;
-  floating_hide_b = hide_button;
-  toolbar_reparent(floating_menu_b);
-  toolbar_reparent(floating_hide_b);
-  gtk_widget_set_size_request(floating_menu_b, target_width, height);
-  gtk_widget_set_size_request(floating_hide_b, target_width, height);
-  gtk_grid_attach(GTK_GRID(grid), floating_menu_b, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), floating_hide_b, 1, 0, 1, 1);
-  g_object_unref(floating_menu_b);
-  g_object_unref(floating_hide_b);
+  /* ZMHFIX3: M/H ne ispolzuem, zhivut MENU/BAR v titlebar */
+  if (GTK_IS_WIDGET(menu_button)) gtk_widget_hide(menu_button);
+  if (GTK_IS_WIDGET(hide_button)) gtk_widget_hide(hide_button);
 
   for (int j = 0; j < MAX_TB_BUTTONS; j++) {
     GtkWidget *w = toolbar_make_button(0, j, target_width, height, button_css);
-    gtk_grid_attach(GTK_GRID(grid), w, j % 2, j / 2 + 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, j % 2, j / 2, 1, 1);
   }
 
   gtk_container_add(GTK_CONTAINER(floating_window), grid);
@@ -502,7 +497,7 @@ void toolbar_destroy_floating(void) {
     if (floating_menu_b) {
       gtk_widget_set_size_request(floating_menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
       gtk_fixed_put(GTK_FIXED(fixed), floating_menu_b, display_width[display_size] - MENU_WIDTH, 0);
-      gtk_widget_show(floating_menu_b);
+      gtk_widget_hide(floating_menu_b);
       g_object_unref(floating_menu_b);
       floating_menu_b = NULL;
     }
@@ -510,7 +505,7 @@ void toolbar_destroy_floating(void) {
     if (floating_hide_b) {
       gtk_widget_set_size_request(floating_hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
       gtk_fixed_put(GTK_FIXED(fixed), floating_hide_b, display_width[display_size] - MENU_WIDTH, VFO_HEIGHT / 2);
-      gtk_widget_show(floating_hide_b);
+      gtk_widget_hide(floating_hide_b);
       g_object_unref(floating_hide_b);
       floating_hide_b = NULL;
     }
