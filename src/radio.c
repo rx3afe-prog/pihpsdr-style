@@ -1391,7 +1391,7 @@ static void thetis_bar_create(void) {
   zen_set_r1(0);
   zen_state = 0;
 }
-static int zen_status = 1;
+static int zen_status = 0;
 static int zen_old_slid = 0;
 static int zen_old_tool = 0;
 static int zen_h_open = 0;
@@ -1440,7 +1440,7 @@ void radio_reconfigure(void) {
   int active_toolbar_rows = floating_toolbar ? 0 : toolbar_rows;
   // the sliders move into the floating toolbar, if that is active
   int sliders_grid_rows = floating_toolbar ? 0 : sliders_effective_rows(my_width, slider_rows);
-if (!zen_entered) sliders_grid_rows = 0;
+// [ZMH] убрано: ползунки показываем сразу, без зен-режима
   rx_height -= SLIDERS_HEIGHT * sliders_grid_rows;
   rx_height -= TOOLBAR_HEIGHT * active_toolbar_rows;
   y = zen_status ? 0 : VFO_HEIGHT;
@@ -1721,7 +1721,7 @@ static void radio_create_visual(void) {
     zrc_last_h = rx_height;
   }
   int sliders_grid_rows = floating_toolbar ? 0 : sliders_effective_rows(my_width, slider_rows);
-if (!zen_entered) sliders_grid_rows = 0;
+// [ZMH] убрано: ползунки показываем сразу, без зен-режима
   rx_height -= SLIDERS_HEIGHT * sliders_grid_rows;
   rx_height -= TOOLBAR_HEIGHT * (floating_toolbar ? 0 : toolbar_rows);
 
