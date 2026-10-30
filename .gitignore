@@ -14,3 +14,6 @@ dxhistory.db
 wdspWisdom*
 zen.stage
 start-log2.txt
+backup_*/
+piHPSDR-*.tar.gz
+*.ZPAN25-etalon
