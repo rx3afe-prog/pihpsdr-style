@@ -314,54 +314,7 @@ void rx_panadapter_update(RECEIVER *rx) {
   cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, myheight);
   cairo_fill(cr);
 
-  /* ZPAN1: sleva — rezhim+polosa (LSB 3.1k), sprava — chastota VFO.
-     Obe podpisi privyazany k krayam filtra i edut vmeste s nim (PBT). */
-  if (toolbar_rows > 0) {
-    const char *mstr;
-    switch (mode) {
-      case modeLSB:   mstr = "LSB";  break;
-      case modeUSB:   mstr = "USB";  break;
-      case modeCWL:   mstr = "CWL";  break;
-      case modeCWU:   mstr = "CWU";  break;
-      case modeDIGL: mstr = "DIGL"; break;
-      case modeDIGU: mstr = "DIGU"; break;
-      case modeAM: case modeSAM: mstr = "AM"; break;
-      case modeFMN:   mstr = "FM";   break;
-      default:        mstr = "---";  break;
-    }
-    long long bw = (long long)(rx->filter_high - rx->filter_low);
-    char ptxt[64], ftxt[64], bwt[64];
-    if (bw >= 1000) {
-      snprintf(ptxt, sizeof(ptxt), "%s %.1fk", mstr, bw / 1000.0);
-      snprintf(bwt, sizeof(bwt), " %.1fk", bw / 1000.0);
-    } else {
-      snprintf(ptxt, sizeof(ptxt), "%s %lldHz", mstr, bw);
-      snprintf(bwt, sizeof(bwt), " %lldHz", bw);
-    }
-    long long f = vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : vfo[rx->id].frequency;  /* ZCTUN2: to zhe lechenie CTUN, chto i v shkale A */
-    snprintf(ftxt, sizeof(ftxt), "%lld.%03lld.%03lld",
-             f / 1000000LL, (f / 1000LL) % 1000LL, f % 1000LL);
-
-    cairo_text_extents_t ext;
-    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, zscale_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
-    cairo_set_font_size(cr, 14.0 * scalfac * zscale_size_scale);  /* ZSIZE-BASE */
-
-    /* ZBTN1: obshchaya shirina - privyazka k filtru, kak v ZPAN25 */
-    cairo_text_extents(cr, ptxt, &ext);
-    double lx = filter_left - ext.width - 4.0 * scalfac;
-    if (lx < 2.0) { lx = 2.0; }
-    double ty = ext.height + 37.25 * scalfac;
-
-        /* ZPAN2: levaya podpis (rezhim+polosa) ubrana 30.10 — odin v odin s pravoy */
-
-/* ZBTN1: chastota - krasnaya */
-    cairo_text_extents(cr, ftxt, &ext);
-    double fx = filter_right + 4.0 * scalfac;
-    if (fx + ext.width > rx->width) { fx = rx->width - ext.width - 2.0; }
-    cairo_set_source_rgba(cr, zscale_freq_color.red, zscale_freq_color.green, zscale_freq_color.blue, zscale_freq_color.alpha);
-    cairo_move_to(cr, fx, ty);
-    cairo_show_text(cr, ftxt);
-  }
+    /* ZPAN3: vse podpisi ubrany iz bara 30.10 — chastota zhivet v zagolovke okna */
 
   // plot the levels
   if (active) {
@@ -1101,6 +1054,7 @@ void rx_panadapter_init(RECEIVER *rx, int width, int height) {
   // Note the scroll event is generated from  to both RX1/RX2 AND the vfo panel and will scroll the active receiver only
   //
   g_signal_connect(rx->panadapter, "scroll_event", G_CALLBACK(panadapter_scroll_event_cb), NULL);
+
   /* Ask to receive events the drawing area doesn't normally
    * subscribe to. In particular, we need to ask for the
    * button press and motion notify events that want to handle.
