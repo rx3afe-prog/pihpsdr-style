@@ -577,8 +577,10 @@ static void choose_vfo_layout(void) {
   //
   vfo_layout_ensure();
   const int menu_w = floating_toolbar ? 0 : MENU_WIDTH;  // Menu/Hide live in the floating toolbar
+  const int use_embedded = (meter_type != SMETER_BAR);      /* ZSBAR */
+  const int meter_min = use_embedded ? MIN_METER_WIDTH : 24; /* ZSBAR */
   const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
-  int avail = display_width[display_size] - menu_w - MIN_METER_WIDTH;
+  int avail = display_width[display_size] - menu_w - meter_min;
 
   if (extended_meter) { avail -= MIN_ADD_METER_WIDTH; }
 
@@ -596,7 +598,7 @@ static void choose_vfo_layout(void) {
     for (int i = 0; i < num_vfo_layouts; i++) {
       if (vfo_layout_list[i].description != NULL &&
           strcmp(vfo_layout_list[i].description, forced_vfo_layout) == 0 &&
-          vfo_layout_list[i].width + 2 * VFO_SIDE_INSET <= (vfo_layout_list[i].meter_w > 0 ? avail_embedded : avail)) {
+          vfo_layout_list[i].width + 2 * VFO_SIDE_INSET <= (vfo_layout_list[i].meter_w > 0 && use_embedded ? avail_embedded : avail)) {
         current_vfo_layout = &vfo_layout_list[i];
         vfl = current_vfo_layout;
         goto layout_chosen;
@@ -610,7 +612,7 @@ static void choose_vfo_layout(void) {
       break;
     }
 
-    if (vfl->width + 2 * VFO_SIDE_INSET <= (vfl->meter_w > 0 ? avail_embedded : avail)) { break; }
+    if (vfl->width + 2 * VFO_SIDE_INSET <= (vfl->meter_w > 0 && use_embedded ? avail_embedded : avail)) { break; }
 
     vfl++;
   }
@@ -619,8 +621,9 @@ static void choose_vfo_layout(void) {
 
 layout_chosen:
   VFO_HEIGHT = current_vfo_layout->height;
-  int spare = display_width[display_size] - menu_w - MIN_METER_WIDTH - current_vfo_layout->width - 2 * VFO_SIDE_INSET;
-  METER_WIDTH = MIN_METER_WIDTH;
+  int spare = display_width[display_size] - menu_w - meter_min - current_vfo_layout->width - 2 * VFO_SIDE_INSET;
+  if (!use_embedded) { spare = 0; }  /* ZSBAR: poloska ne razrastaetsya */
+  METER_WIDTH = meter_min;
   ADD_METER_WIDTH = 0;
 
   //
@@ -652,7 +655,8 @@ layout_chosen:
 
   METER_WIDTH += ADD_METER_WIDTH;
   METER_HEIGHT = VFO_HEIGHT;
-  meter_in_vfo_bar = (current_vfo_layout->meter_w > 0);
+  meter_in_vfo_bar = use_embedded && (current_vfo_layout->meter_w > 0);
+  if (!use_embedded) { METER_WIDTH = 1; METER_HEIGHT = 1; METER_X = -100; METER_Y = -100; }  /* ZSBAR: widget spryatan, risuem v panorame */
 
   if (meter_in_vfo_bar) {
     //
@@ -1918,6 +1922,8 @@ static void radio_create_visual(void) {
 /* ZMHFN: svoi knopki M/H v titlebar, nichego ne perenosim */
 static GtkWidget *zmh_mb = NULL;
 static GtkWidget *zmh_hb = NULL;
+extern GtkWidget *hfreq_b_label;  /* ZFREQ-B: tsifra B iz main.c */
+
 static GtkWidget *zmh_tb = NULL;
 
 static void zmh_raise(void) {
@@ -1936,7 +1942,7 @@ static void zmh_raise(void) {
   if (!zmh_mb) {
     zmh_mb = gtk_button_new_with_label("МЕНЮ");
     gtk_widget_set_name(zmh_mb, "zmh-btn");
-    gtk_widget_set_size_request(zmh_mb, 90, 32);
+    gtk_widget_set_size_request(zmh_mb, 40, 20);  /* ZMH-COMPACT: kompaktnaya knopka */
     g_signal_connect(zmh_mb, "button-press-event", G_CALLBACK(menu_cb), NULL);
     gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), zmh_mb);
     gtk_widget_show(zmh_mb);
@@ -1945,17 +1951,24 @@ static void zmh_raise(void) {
   if (!zmh_hb) {
     zmh_hb = gtk_button_new_with_label("БАР");
     gtk_widget_set_name(zmh_hb, "zmh-btn");
-    gtk_widget_set_size_request(zmh_hb, 90, 32);
+    gtk_widget_set_size_request(zmh_hb, 40, 20);  /* ZMH-COMPACT: kompaktnaya knopka */
     g_signal_connect(zmh_hb, "button-press-event", G_CALLBACK(hideall_cb), NULL);
     gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), zmh_hb);
     gtk_widget_show(zmh_hb);
     g_print("ZMH6: H sozdana v titlebar\n");
   }
+  /* ZFREQ-B: tsifrovaya shkala VFO B — srazu posle BAR, otstup ~2-3 mm */
+  if (hfreq_b_label != NULL && !gtk_widget_get_parent(hfreq_b_label)) {
+    gtk_widget_set_margin_start(hfreq_b_label, 9);
+    gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), hfreq_b_label);
+    gtk_widget_show(hfreq_b_label);
+    g_print("ZMH6: B-shkala podnyata v titlebar ryadom s BAR\n");
+  }
   { static GtkCssProvider *zcss = NULL;
     if (!zcss) {
       zcss = gtk_css_provider_new();
       gtk_css_provider_load_from_data(zcss,
-        ".zmh-btn { font-size: 15px; min-width: 66px; min-height: 26px; }", -1, NULL);
+        ".zmh-btn { font-size: 10px; min-width: 0px; min-height: 0px; padding: 1px 3px; }", -1, NULL);
       gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
         GTK_STYLE_PROVIDER(zcss), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
     }
@@ -4441,6 +4454,11 @@ extern int vfo_status_use_custom;    /* PSTEXT PATCH */
 extern GdkRGBA vfo_status_color;
 extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
+extern GdkRGBA zscale_mode_color;   /* ZBTN2 PATCH */
+extern GdkRGBA zscale_bw_color;
+extern GdkRGBA zscale_freq_color;
+extern int zscale_bold;
+extern double zscale_size_scale;
 extern double pan_dbm_font_size;   /* PAN TEXT PATCH */
 extern double pan_freq_font_size;  /* PAN TEXT PATCH */
 extern GdkRGBA pan_dbm_color;      /* PAN TEXT PATCH */
@@ -4451,7 +4469,7 @@ static void pan_grid_save_custom(void) {
   FILE* f;
   const char* home = getenv("HOME");
   if (!home) { home = "."; }
-  snprintf(path, sizeof(path), "%s/piHPSDR-build-ru/panadapter_grid.conf", home);
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
   f = fopen(path, "w");
   if (!f) { return; }
   fprintf(f, "use_custom_color=%d\n", pan_grid_use_custom_color);
@@ -4502,16 +4520,66 @@ static void pan_grid_save_custom(void) {
   fprintf(f, "status_color_a=%.4f\n", vfo_status_color.alpha);
   fprintf(f, "status_brightness=%.2f\n", vfo_status_brightness);
   fprintf(f, "status_size=%.2f\n", vfo_status_size_scale);
+  g_print("ZSV: mode=%.2f,%.2f,%.2f freq=%.2f,%.2f,%.2f size=%.2f\n", zscale_mode_color.red, zscale_mode_color.green, zscale_mode_color.blue, zscale_freq_color.red, zscale_freq_color.green, zscale_freq_color.blue, zscale_size_scale);
+  fprintf(f, "zscale_mode_r=%.4f\n", zscale_mode_color.red);
+  fprintf(f, "zscale_mode_g=%.4f\n", zscale_mode_color.green);
+  fprintf(f, "zscale_mode_b=%.4f\n", zscale_mode_color.blue);
+  fprintf(f, "zscale_mode_a=%.4f\n", zscale_mode_color.alpha);
+  fprintf(f, "zscale_bw_r=%.4f\n", zscale_bw_color.red);
+  fprintf(f, "zscale_bw_g=%.4f\n", zscale_bw_color.green);
+  fprintf(f, "zscale_bw_b=%.4f\n", zscale_bw_color.blue);
+  fprintf(f, "zscale_bw_a=%.4f\n", zscale_bw_color.alpha);
+  fprintf(f, "zscale_freq_r=%.4f\n", zscale_freq_color.red);
+  fprintf(f, "zscale_freq_g=%.4f\n", zscale_freq_color.green);
+  fprintf(f, "zscale_freq_b=%.4f\n", zscale_freq_color.blue);
+  fprintf(f, "zscale_freq_a=%.4f\n", zscale_freq_color.alpha);
+  fprintf(f, "zscale_size=%.2f\n", zscale_size_scale);
+  fprintf(f, "zscale_bold=%d\n", zscale_bold);
+  fprintf(f, "zscale_bold=%d\n", zscale_bold);
   fclose(f);
 }
 
+
+static void zscale_restore(void) {
+  char path[512];
+  char line[128];
+  FILE* f;
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
+  f = fopen(path, "r");
+  if (!f) { g_print("ZRS: no conf file\n"); return; }
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (sscanf(line, "zscale_mode_r=%lf", &zscale_mode_color.red) == 1) {
+    } else if (sscanf(line, "zscale_mode_g=%lf", &zscale_mode_color.green) == 1) {
+    } else if (sscanf(line, "zscale_mode_b=%lf", &zscale_mode_color.blue) == 1) {
+    } else if (sscanf(line, "zscale_mode_a=%lf", &zscale_mode_color.alpha) == 1) {
+    } else if (sscanf(line, "zscale_bw_r=%lf", &zscale_bw_color.red) == 1) {
+    } else if (sscanf(line, "zscale_bw_g=%lf", &zscale_bw_color.green) == 1) {
+    } else if (sscanf(line, "zscale_bw_b=%lf", &zscale_bw_color.blue) == 1) {
+    } else if (sscanf(line, "zscale_bw_a=%lf", &zscale_bw_color.alpha) == 1) {
+    } else if (sscanf(line, "zscale_freq_r=%lf", &zscale_freq_color.red) == 1) {
+    } else if (sscanf(line, "zscale_freq_g=%lf", &zscale_freq_color.green) == 1) {
+    } else if (sscanf(line, "zscale_freq_b=%lf", &zscale_freq_color.blue) == 1) {
+    } else if (sscanf(line, "zscale_freq_a=%lf", &zscale_freq_color.alpha) == 1) {
+    } else if (sscanf(line, "zscale_bold=%d", &zscale_bold) == 1) {
+} else if (sscanf(line, "zscale_bold=%d", &zscale_bold) == 1) {
+} else if (sscanf(line, "zscale_size=%lf", &zscale_size_scale) == 1) {
+    }
+  }
+  fclose(f);
+  g_print("ZRS: mode=%.2f,%.2f,%.2f freq=%.2f,%.2f,%.2f size=%.2f\n",
+    zscale_mode_color.red, zscale_mode_color.green, zscale_mode_color.blue,
+    zscale_freq_color.red, zscale_freq_color.green, zscale_freq_color.blue,
+    zscale_size_scale);
+}
+
 static void pan_grid_restore_custom(void) {
+  zscale_restore();
   char path[512];
   char line[128];
   FILE* f;
   const char* home = getenv("HOME");
   if (!home) { home = "."; }
-  snprintf(path, sizeof(path), "%s/piHPSDR-build-ru/panadapter_grid.conf", home);
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
   f = fopen(path, "r");
   if (!f) { return; }
   while (fgets(line, sizeof(line), f)) {

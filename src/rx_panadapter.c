@@ -18,6 +18,7 @@
 */
 
 #include <gtk/gtk.h>
+extern int toolbar_rows;  /* ZPAN1: vidimost podpisey privyazana k baru */
 double panadapter_line_width = 1.0;
 double pan_grid_width = 1.0;
 GdkRGBA pan_grid_custom_color = { 0.5, 0.5, 0.5, 1.0 };
@@ -44,6 +45,11 @@ int vfo_status_use_custom = 0;        /* PSTEXT PATCH */
 GdkRGBA vfo_status_color = { 1.0, 1.0, 1.0, 1.0 };
 double vfo_status_brightness = 1.0;
 double vfo_status_size_scale = 1.0;
+/* ZBTN2 PATCH: tsveta i razmer tsifrovoy shkaly (nastroyka v Color Settings) */
+GdkRGBA zscale_mode_color = { 1.0, 1.0, 0.0, 1.0 };
+GdkRGBA zscale_bw_color   = { 0.0, 1.0, 1.0, 1.0 };
+GdkRGBA zscale_freq_color = { 1.0, 0.0, 1.0, 1.0 };
+double zscale_size_scale  = 1.0;
 #include <gdk/gdk.h>
 #include <math.h>
 #include <unistd.h>
@@ -53,6 +59,7 @@ double vfo_status_size_scale = 1.0;
 #include <arpa/inet.h>
 
 #include "actions.h"
+#include "meter.h"   /* ZSBAR */
 #include "agc.h"
 #include "appearance.h"
 #include "band.h"
@@ -71,6 +78,8 @@ double vfo_status_size_scale = 1.0;
 #include "theme.h"
 #include "transmitter.h"
 #include "vfo.h"
+
+int zscale_bold = 0;  /* ZBOLD: tolstyy shrift shkaly */
 
 //
 // Last drawn screen positions (pixels) of the AGC knee (G) and
@@ -267,7 +276,7 @@ void rx_panadapter_update(RECEIVER *rx) {
             cairo_set_source_rgba(cr, COLOUR_PAN_TEXT);
           }
 
-          cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+          cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, zscale_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
           cairo_set_font_size(cr, 8.0 * scalfac);
           cairo_text_extents(cr, band_channels_60m[i].label, &ext);
           double tx = x1 + ((x2 - x1) - ext.width) / 2.0;
@@ -304,6 +313,65 @@ void rx_panadapter_update(RECEIVER *rx) {
   }
   cairo_rectangle(cr, filter_left, 0.0, filter_right - filter_left, myheight);
   cairo_fill(cr);
+
+  /* ZPAN1: sleva — rezhim+polosa (LSB 3.1k), sprava — chastota VFO.
+     Obe podpisi privyazany k krayam filtra i edut vmeste s nim (PBT). */
+  if (toolbar_rows > 0) {
+    const char *mstr;
+    switch (mode) {
+      case modeLSB:   mstr = "LSB";  break;
+      case modeUSB:   mstr = "USB";  break;
+      case modeCWL:   mstr = "CWL";  break;
+      case modeCWU:   mstr = "CWU";  break;
+      case modeDIGL: mstr = "DIGL"; break;
+      case modeDIGU: mstr = "DIGU"; break;
+      case modeAM: case modeSAM: mstr = "AM"; break;
+      case modeFMN:   mstr = "FM";   break;
+      default:        mstr = "---";  break;
+    }
+    long long bw = (long long)(rx->filter_high - rx->filter_low);
+    char ptxt[64], ftxt[64], bwt[64];
+    if (bw >= 1000) {
+      snprintf(ptxt, sizeof(ptxt), "%s %.1fk", mstr, bw / 1000.0);
+      snprintf(bwt, sizeof(bwt), " %.1fk", bw / 1000.0);
+    } else {
+      snprintf(ptxt, sizeof(ptxt), "%s %lldHz", mstr, bw);
+      snprintf(bwt, sizeof(bwt), " %lldHz", bw);
+    }
+    long long f = vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : vfo[rx->id].frequency;  /* ZCTUN2: to zhe lechenie CTUN, chto i v shkale A */
+    snprintf(ftxt, sizeof(ftxt), "%lld.%03lld.%03lld",
+             f / 1000000LL, (f / 1000LL) % 1000LL, f % 1000LL);
+
+    cairo_text_extents_t ext;
+    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, zscale_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, 14.0 * scalfac * zscale_size_scale);  /* ZSIZE-BASE */
+
+    /* ZBTN1: obshchaya shirina - privyazka k filtru, kak v ZPAN25 */
+    cairo_text_extents(cr, ptxt, &ext);
+    double lx = filter_left - ext.width - 4.0 * scalfac;
+    if (lx < 2.0) { lx = 2.0; }
+    double ty = ext.height + 37.25 * scalfac;
+
+    /* ZBTN1: rezhim (LSB/USB/CW...) - zheltyy */
+    cairo_set_source_rgba(cr, zscale_mode_color.red, zscale_mode_color.green, zscale_mode_color.blue, zscale_mode_color.alpha);
+    cairo_move_to(cr, lx, ty);
+    cairo_show_text(cr, mstr);
+    cairo_text_extents(cr, mstr, &ext);
+    double mx = lx + ext.width;
+
+    /* ZBTN1: polosa filtra - ciian */
+    cairo_set_source_rgba(cr, zscale_bw_color.red, zscale_bw_color.green, zscale_bw_color.blue, zscale_bw_color.alpha);
+    cairo_move_to(cr, mx, ty);
+    cairo_show_text(cr, bwt);
+
+    /* ZBTN1: chastota - krasnaya */
+    cairo_text_extents(cr, ftxt, &ext);
+    double fx = filter_right + 4.0 * scalfac;
+    if (fx + ext.width > rx->width) { fx = rx->width - ext.width - 2.0; }
+    cairo_set_source_rgba(cr, zscale_freq_color.red, zscale_freq_color.green, zscale_freq_color.blue, zscale_freq_color.alpha);
+    cairo_move_to(cr, fx, ty);
+    cairo_show_text(cr, ftxt);
+  }
 
   // plot the levels
   if (active) {
@@ -550,7 +618,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 
   if (remoteclient.running && rx->id == 0) {
     char text[64];
-    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, zscale_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_source_rgba(cr, COLOUR_SHADE);
     cairo_set_font_size(cr, 20.0 * scalfac);
     inet_ntop(AF_INET, &(((struct sockaddr_in *)&remoteclient.address)->sin_addr), text, 64);
@@ -940,6 +1008,77 @@ void rx_panadapter_update(RECEIVER *rx) {
   //
   dxcluster_draw_spots(cr, rx->id, frequency, rx->cAp, rx->cBp, mywidth, myheight);
 
+  // ZSBAR v2: S-poloska v pravom verhnem uglu panoramy, S9 za seredinoj
+  if (meter_type == SMETER_BAR) {
+    const double W = (double)rx->width;
+    const double bw = (W > 260.0) ? 240.0 : (W - 20.0);
+    const double x0 = W - bw - 10.0;
+    const double y0 = 12.0;
+    const double bh = 4.5;
+    const double ly = y0 + bh + 9.0;
+    const double gf = 0.65;          /* dolya zelenoj chasti (S1..S9) */
+    const double lo = -127.0;
+    double lvl = meter_bar_rxlvl, pk = meter_bar_pk, lw, x, x9;
+    char zb[8];
+    if (lvl < lo) { lvl = lo; } if (lvl > -13.0) { lvl = -13.0; }
+    if (pk < lo) { pk = lo; } if (pk > -13.0) { pk = -13.0; }
+    /* fon */
+    cairo_set_source_rgba(cr, 0.04, 0.05, 0.08, 0.75);
+    cairo_rectangle(cr, x0 - 6.0, y0 - 2.0, bw + 12.0, bh + 15.0);
+    cairo_fill(cr);
+    /* krasnyij sektor pravee S9 */
+    x9 = x0 + gf * bw;
+    cairo_set_source_rgba(cr, 0.45, 0.08, 0.05, 0.45);
+    cairo_rectangle(cr, x9, y0, x0 + bw - x9, bh);
+    cairo_fill(cr);
+    /* zapolnenie urovnya: kusachno-linejnaya shkala */
+    lw = (lvl <= -73.0) ? gf * bw * (lvl - lo) / (-73.0 - lo)
+                        : gf * bw + (1.0 - gf) * bw * (lvl + 73.0) / 60.0;
+    cairo_pattern_t *g = cairo_pattern_create_linear(x0, 0.0, x0 + bw, 0.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.00, 0.10, 0.85, 0.20, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.64, 0.15, 0.95, 0.30, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.66, 0.95, 0.35, 0.10, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 1.00, 1.00, 0.10, 0.05, 1.0);
+    cairo_set_source(cr, g);
+    cairo_rectangle(cr, x0, y0, lw, bh);
+    cairo_fill(cr);
+    cairo_pattern_destroy(g);
+    /* pik — svetlaya chyorta */
+    x = (pk <= -73.0) ? x0 + gf * bw * (pk - lo) / (-73.0 - lo)
+                      : x9 + (1.0 - gf) * bw * (pk + 73.0) / 60.0;
+    cairo_set_source_rgba(cr, 1.0, 0.95, 0.85, 0.95);
+    cairo_set_line_width(cr, 1.0);
+    cairo_move_to(cr, x, y0);
+    cairo_line_to(cr, x, y0 + bh);
+    cairo_stroke(cr);
+    /* S1..S9 s chyortochkami kazhdyie 3 dB */
+    cairo_set_source_rgba(cr, 0.85, 0.88, 0.92, 0.95);
+    cairo_set_font_size(cr, 7.0);
+    for (int su = 1; su <= 9; su++) {
+      double db = lo + 6.0 * su;
+      x = x0 + gf * bw * (db - lo) / (-73.0 - lo);
+      cairo_move_to(cr, x, y0 + bh);
+      cairo_line_to(cr, x, y0 + bh + 3.0);
+      cairo_stroke(cr);
+      snprintf(zb, sizeof(zb), "%d", su);
+      cairo_move_to(cr, x - 2.0, ly);
+      cairo_show_text(cr, zb);
+    }
+    /* krasnaya zona: tsifry tolko na +10, +30, +60, mezhdu — chyortochki */
+    for (int ov = 10; ov <= 60; ov += 10) {
+      x = x9 + (1.0 - gf) * bw * ov / 60.0;
+      cairo_move_to(cr, x, y0 + bh);
+      cairo_line_to(cr, x, y0 + bh + 3.0);
+      cairo_stroke(cr);
+      if (ov == 10 || ov == 30 || ov == 60) {
+        snprintf(zb, sizeof(zb), "+%d", ov);
+        cairo_move_to(cr, x - 7.0, ly);
+        cairo_show_text(cr, zb);
+      }
+    }
+  }
+
+
   // ZFREQ: compact frequency readout in the top-left corner
   {
 //    char zbuf[32];
@@ -947,7 +1086,7 @@ void rx_panadapter_update(RECEIVER *rx) {
 //    long long zkhz = (frequency % 1000000LL) / 1000LL;
 //    long long zhz  = frequency % 1000LL;
 //    snprintf(zbuf, sizeof(zbuf), "%lld.%03lld.%03lld", zmhz, zkhz, zhz);
-//    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+//    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, zscale_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
 //    cairo_set_font_size(cr, 15.0 * scalfac);
 //    cairo_set_source_rgba(cr, 0.72, 0.0, 0.0, 1.0);
 //    cairo_move_to(cr, 110.0, 27.0);

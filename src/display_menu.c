@@ -228,6 +228,10 @@ extern int vfo_status_use_custom;    /* PSTEXT PATCH */
 extern GdkRGBA vfo_status_color;
 extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
+extern GdkRGBA zscale_mode_color;   /* ZBTN2 PATCH */
+extern GdkRGBA zscale_bw_color;     /* ZBTN2 PATCH */
+extern GdkRGBA zscale_freq_color;   /* ZBTN2 PATCH */
+extern double zscale_size_scale;    /* ZBTN2 PATCH */
 extern GdkRGBA pan_dbm_color;
 extern GdkRGBA pan_freq_color;
 
@@ -381,6 +385,24 @@ static void vfo_status_brightness_cb(GtkWidget *widget, gpointer data) {
 static void vfo_status_size_cb(GtkWidget *widget, gpointer data) {
   vfo_status_size_scale = gtk_range_get_value(GTK_RANGE(widget));
 }
+static void zscale_mode_color_cb(GtkWidget *widget, gpointer data) { /* ZBTN2 PATCH */
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &zscale_mode_color);
+}
+static void zscale_bw_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &zscale_bw_color);
+}
+static void zscale_freq_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &zscale_freq_color);
+}
+extern int zscale_bold;
+
+static void zscale_bold_cb(GtkWidget *widget, gpointer data) {
+  zscale_bold = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+
+static void zscale_size_cb(GtkWidget *widget, gpointer data) {
+  zscale_size_scale = gtk_range_get_value(GTK_RANGE(widget));
+}
 static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   GtkWidget *dlg = gtk_dialog_new();
   GtkWidget *cg = gtk_grid_new();
@@ -479,6 +501,39 @@ static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   gtk_widget_set_size_request(w, 150, -1);
   gtk_grid_attach(GTK_GRID(cg), w, 1, 13, 1, 1);
   g_signal_connect(w, "value-changed", G_CALLBACK(vfo_status_size_cb), NULL);
+  l = gtk_label_new("Цвет режима");                       /* ZBTN2 PATCH */
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 14, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &zscale_mode_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 14, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(zscale_mode_color_cb), NULL);
+  l = gtk_label_new("Цвет полосы");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 15, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &zscale_bw_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 15, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(zscale_bw_color_cb), NULL);
+  l = gtk_label_new("Цвет частоты");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 16, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &zscale_freq_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 16, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(zscale_freq_color_cb), NULL);
+  l = gtk_label_new("Размер шрифта шкалы");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 17, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), zscale_size_scale);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 17, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(zscale_size_cb), NULL);
+  l = gtk_check_button_new_with_label("Жирный шрифт шкалы");  /* ZBOLD */
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(l), zscale_bold != 0);
+  gtk_grid_attach(GTK_GRID(cg), l, 1, 18, 1, 1);
+  g_signal_connect(l, "toggled", G_CALLBACK(zscale_bold_cb), NULL);
+  l = gtk_check_button_new_with_label("Жирный шрифт шкалы");  /* ZBOLD */
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(l), zscale_bold != 0);
+  gtk_grid_attach(GTK_GRID(cg), l, 1, 18, 1, 1);
+  g_signal_connect(l, "toggled", G_CALLBACK(zscale_bold_cb), NULL);
   gtk_window_set_default_size(GTK_WINDOW(dlg), 420, 620);
   tb_css_apply();
   gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
@@ -491,11 +546,17 @@ static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
 extern double hfreq_font_size;
 extern char hfreq_color_hex[];
 extern char hfreq_tail_hex[];
+// ZFREQ-B: pereklyucheniya B-shkalyi v zagolovke (sinhronno s A)
+extern double hfreq_b_font_size;
+extern char hfreq_b_color_hex[];
+extern char hfreq_b_tail_hex[];
 extern void hfreq_css_apply(void);
 extern void hfreq_conf_save(void);
 
 static void hfreq_size_cb(GtkWidget *widget, gpointer data) {
+  // ZFREQ-B: razmer odin dlya obeih tsifrovyih skal A i B v verhney planke
   hfreq_font_size = gtk_range_get_value(GTK_RANGE(widget));
+  hfreq_b_font_size = hfreq_font_size;
   hfreq_css_apply();
   hfreq_conf_save();
 }
@@ -520,10 +581,14 @@ static void hfreq_color_pick_cb(GtkWidget *widget, gpointer data) {
   gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(dialog), &color);
   if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
     gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(dialog), &color);
-    g_snprintf(which ? hfreq_tail_hex : hfreq_color_hex, 16, "#%02x%02x%02x",
+    char hexbuf[16];
+    g_snprintf(hexbuf, sizeof(hexbuf), "#%02x%02x%02x",
         (int)(color.red * 255.0 + 0.5),
         (int)(color.green * 255.0 + 0.5),
         (int)(color.blue * 255.0 + 0.5));
+    // ZFREQ-B: tsvet sinhronen dlya obeih skal A i B v verhney planke
+    g_strlcpy(which ? hfreq_tail_hex : hfreq_color_hex, hexbuf, 16);
+    g_strlcpy(which ? hfreq_b_tail_hex : hfreq_b_color_hex, hexbuf, 16);
     hfreq_css_apply();
     hfreq_conf_save();
   }
@@ -557,17 +622,18 @@ static void pan_text_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   gtk_grid_attach(GTK_GRID(cg), w, 1, 2, 1, 1);
   g_signal_connect(w, "clicked", G_CALLBACK(pan_text_color_cb), GINT_TO_POINTER(1));
   // HEADERCFG: header scale
-  l = gtk_label_new("Header Size");
+  // HEADERCFG: tsifrovaya shkala A i B v verhney planke okna (zagolovok)
+  l = gtk_label_new("Шкала вверху: размер (A и B)");
   gtk_grid_attach(GTK_GRID(cg), l, 0, 3, 1, 1);
   w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 12.0, 48.0, 1.0);
   gtk_range_set_value(GTK_RANGE(w), hfreq_font_size);
   gtk_widget_set_size_request(w, 150, -1);
   gtk_grid_attach(GTK_GRID(cg), w, 1, 3, 1, 1);
   g_signal_connect(w, "value-changed", G_CALLBACK(hfreq_size_cb), NULL);
-  w = gtk_button_new_with_label("Header Freq Color");
+  w = gtk_button_new_with_label("Шкала вверху: цвет частоты");
   gtk_grid_attach(GTK_GRID(cg), w, 0, 4, 1, 1);
   g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(0));
-  w = gtk_button_new_with_label("Header Tail Color");
+  w = gtk_button_new_with_label("Шкала вверху: цвет Гц (хвост)");
   gtk_grid_attach(GTK_GRID(cg), w, 1, 4, 1, 1);
   g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(1));
   gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
