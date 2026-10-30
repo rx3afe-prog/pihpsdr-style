@@ -352,19 +352,9 @@ void rx_panadapter_update(RECEIVER *rx) {
     if (lx < 2.0) { lx = 2.0; }
     double ty = ext.height + 37.25 * scalfac;
 
-    /* ZBTN1: rezhim (LSB/USB/CW...) - zheltyy */
-    cairo_set_source_rgba(cr, zscale_mode_color.red, zscale_mode_color.green, zscale_mode_color.blue, zscale_mode_color.alpha);
-    cairo_move_to(cr, lx, ty);
-    cairo_show_text(cr, mstr);
-    cairo_text_extents(cr, mstr, &ext);
-    double mx = lx + ext.width;
+        /* ZPAN2: levaya podpis (rezhim+polosa) ubrana 30.10 — odin v odin s pravoy */
 
-    /* ZBTN1: polosa filtra - ciian */
-    cairo_set_source_rgba(cr, zscale_bw_color.red, zscale_bw_color.green, zscale_bw_color.blue, zscale_bw_color.alpha);
-    cairo_move_to(cr, mx, ty);
-    cairo_show_text(cr, bwt);
-
-    /* ZBTN1: chastota - krasnaya */
+/* ZBTN1: chastota - krasnaya */
     cairo_text_extents(cr, ftxt, &ext);
     double fx = filter_right + 4.0 * scalfac;
     if (fx + ext.width > rx->width) { fx = rx->width - ext.width - 2.0; }
