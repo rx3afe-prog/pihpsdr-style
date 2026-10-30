@@ -435,7 +435,8 @@ void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide
   floating_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(floating_window), "piHPSDR-Improved - Toolbar");
   gtk_window_set_transient_for(GTK_WINDOW(floating_window), GTK_WINDOW(top_window));
-  gtk_window_set_resizable(GTK_WINDOW(floating_window), FALSE);
+  /* ZSIZING: panel mozhno rastyagivat — grid rastetsya vmeste s oknom */
+  gtk_window_set_default_size(GTK_WINDOW(floating_window), 480, 240);
 
   if (floating_toolbar_x >= 0 && floating_toolbar_y >= 0) {
     gtk_window_move(GTK_WINDOW(floating_window), floating_toolbar_x, floating_toolbar_y);

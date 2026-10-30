@@ -32,6 +32,11 @@ enum _meter_type_const {
   DIGITAL = 0,
   ANALOG,
   EDGEWISE,
-  DUALSCALE
+  DUALSCALE,
+  SMETER_BAR   /* ZSBAR: tonkaya poloska urovnya sprava ot panoramy */
 };
 #endif
+
+/* ZSBAR: tekushchii uroven dlya risovaniya v panorame */
+extern double meter_bar_rxlvl;
+extern double meter_bar_pk;

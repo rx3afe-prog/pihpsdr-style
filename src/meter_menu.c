@@ -132,6 +132,7 @@ void meter_menu (GtkWidget *parent) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Analog");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Edgewise");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "DualScale");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "RX3AFE");   /* ZSBAR: tonkaya poloska */
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), meter_type);
   g_signal_connect(btn, "changed", G_CALLBACK(meter_type_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 2, 2, 1);
