@@ -577,6 +577,183 @@ static gboolean rx_panel_draw_frame_cb(GtkWidget *widget, cairo_t *cr, gpointer 
   return FALSE;
 }
 
+int zen_w = 0;
+int zen_h = 0;
+extern void radio_reconfigure(void);
+
+static int zen_grip_x, zen_grip_y, zen_grip_w, zen_grip_h;
+static int zen_dragging = 0;
+static int zen_overhead = 0; /* ZENOVH */
+static int zen_in_fit = 0;
+static int zen_pending_w = -1, zen_pending_h = -1;
+static int zen_min_w = -1, zen_min_h = -1;
+static int zen_retry_count = 0;
+static guint zen_retry_source = 0;
+
+static void zen_reset_fit(void) {
+  zen_pending_w = -1;
+  zen_pending_h = -1;
+  if (zen_retry_source != 0) {
+    g_source_remove(zen_retry_source);
+    zen_retry_source = 0;
+  }
+}
+
+static gboolean zen_grip_press_cb(GtkWidget *w, GdkEventButton *e, gpointer d) {
+  RECEIVER *rx = (RECEIVER *)d;
+  if (e->button != 1) return FALSE;
+  zen_min_w = -1;
+  zen_min_h = -1;
+  if (e->type == GDK_2BUTTON_PRESS) {
+    zen_w = 0;
+    zen_h = 0;
+    zen_dragging = 1;
+    radio_reconfigure();
+    zen_dragging = 0;
+    zen_reset_fit();
+    return TRUE;
+  }
+  zen_reset_fit();
+  zen_grip_x = (int)e->x_root;
+  zen_grip_y = (int)e->y_root;
+  zen_grip_w = rx->width + 2 * RX_DISPLAY_INSET;
+  zen_grip_h = rx->height;
+  {
+    GtkWidget *tl = gtk_widget_get_toplevel(GTK_WIDGET(w));
+    gint ww2, wh2;
+    if (tl != NULL && GTK_IS_WINDOW(tl)) {
+      gtk_window_get_size(GTK_WINDOW(tl), &ww2, &wh2);
+      zen_overhead = wh2 - rx->height;
+      if (zen_overhead < 0) zen_overhead = 0;
+      g_print("ZGRIP: overhead=%d\n", zen_overhead);
+    }
+  }
+  return TRUE;
+}
+
+static gboolean zen_grip_motion_cb(GtkWidget *w, GdkEventMotion *e, gpointer d) {
+  int zw = zen_grip_w + (int)e->x_root - zen_grip_x;
+  int zh = zen_grip_h + (int)e->y_root - zen_grip_y;
+  if (zw < 200 + 2 * RX_DISPLAY_INSET) zw = 200 + 2 * RX_DISPLAY_INSET;
+  if (zh < 150) zh = 150;
+  if (zw > 3840) zw = 3840;
+  if (zh > 2160) zh = 2160;
+  if (zw == zen_w && zh == zen_h) return TRUE;
+  zen_w = zw;
+  zen_h = zh;
+  zen_dragging = 1;
+  radio_reconfigure();
+  zen_dragging = 0;
+  return TRUE;
+}
+
+static void zen_reposition_unzen(RECEIVER *rx) {
+  GtkWidget *panel = GTK_WIDGET(rx->panel);
+  GtkWidget *uz = NULL;
+  GtkAllocation a;
+  GtkRequisition r;
+  GList *children, *l;
+  children = gtk_container_get_children(GTK_CONTAINER(panel));
+  for (l = children; l != NULL; l = l->next) {
+    GtkWidget *ch = GTK_WIDGET(l->data);
+    if (GTK_IS_BIN(ch)) {
+      GtkWidget *lab = gtk_bin_get_child(GTK_BIN(ch));
+      if (GTK_IS_LABEL(lab)) {
+        const gchar *t = gtk_label_get_text(GTK_LABEL(lab));
+        if (t != NULL && g_strcmp0(t, "Un-Z") == 0) { uz = ch; break; }
+      }
+    }
+  }
+  g_list_free(children);
+  if (uz == NULL) return;
+  gtk_widget_get_allocation(uz, &a);
+  if (a.width < 10) {
+    gtk_widget_get_preferred_size(uz, &r, NULL);
+    a.width = r.width;
+  }
+  gtk_fixed_move(GTK_FIXED(panel), uz, rx->width + 2 * RX_DISPLAY_INSET - a.width - 4, a.y);
+}
+
+static gboolean zen_check_resize(gpointer data) {
+  GtkWindow *tl = GTK_WINDOW(data);
+  gint ww, wh;
+  gtk_window_get_size(tl, &ww, &wh);
+  if (ww == zen_pending_w && wh == zen_pending_h) {
+    zen_retry_source = 0;
+    return G_SOURCE_REMOVE;
+  }
+  zen_retry_count++;
+  gtk_window_resize(tl, zen_pending_w, zen_pending_h);
+  if (zen_dragging == 0 && zen_retry_count >= 10) {
+    if (ww > zen_pending_w || wh > zen_pending_h) {
+      zen_min_w = ww;
+      zen_min_h = wh;
+      g_print("[zen] min floor: %dx%d\n", ww, wh);
+      zen_dragging = 1;
+      zen_in_fit = 1;
+      radio_reconfigure();
+      zen_in_fit = 0;
+      zen_dragging = 0;
+    }
+    zen_retry_source = 0;
+    return G_SOURCE_REMOVE;
+  }
+  if (zen_dragging != 0 && zen_retry_count > 200) {
+    zen_retry_source = 0;
+    return G_SOURCE_REMOVE;
+  }
+  return G_SOURCE_CONTINUE;
+}
+
+static void zen_fit_window(RECEIVER *rx) {
+  GtkWidget *tl;
+  int nw, nh, clamped = 0;
+  if (zen_dragging == 0 || zen_in_fit == 1) return;
+  tl = gtk_widget_get_toplevel(GTK_WIDGET(rx->panel));
+  if (tl == NULL || !GTK_IS_WINDOW(tl)) return;
+  nw = rx->width;
+  nh = rx->height + zen_overhead; /* ZENOVH */
+  if (nw < 200) { nw = 200; zen_w = nw + 2 * RX_DISPLAY_INSET; clamped = 1; }
+  if (nh < 150 + zen_overhead) { nh = 150 + zen_overhead; zen_h = 150; clamped = 1; }
+  if (zen_min_w > 0 && nw < zen_min_w) { nw = zen_min_w; zen_w = nw + 2 * RX_DISPLAY_INSET; clamped = 1; }
+  if (zen_min_h > 0 && nh < zen_min_h) { nh = zen_min_h; zen_h = zen_min_h - zen_overhead; clamped = 1; }
+  if (clamped) {
+    zen_in_fit = 1;
+    radio_reconfigure();
+    zen_in_fit = 0;
+  }
+  gtk_window_resize(GTK_WINDOW(tl), nw, nh);
+  zen_pending_w = nw;
+  zen_pending_h = nh;
+  zen_retry_count = 0;
+  if (zen_retry_source != 0) g_source_remove(zen_retry_source);
+  zen_retry_source = g_timeout_add(120, zen_check_resize, tl);
+}
+
+static void zen_ensure_grip(RECEIVER *rx) {
+  GtkWidget *zg = (GtkWidget *)g_object_get_data(G_OBJECT(rx->panel), "zen_grip");
+  if (zg == NULL) {
+    zg = gtk_event_box_new();
+    gtk_container_add(GTK_CONTAINER(zg), gtk_label_new("◢"));
+    gtk_widget_set_size_request(zg, 28, 28);
+    gtk_widget_add_events(zg, GDK_BUTTON_PRESS_MASK | GDK_BUTTON1_MOTION_MASK | GDK_BUTTON_RELEASE_MASK);
+    g_signal_connect(zg, "button-press-event", G_CALLBACK(zen_grip_press_cb), rx);
+    g_signal_connect(zg, "motion-notify-event", G_CALLBACK(zen_grip_motion_cb), rx);
+    g_object_set_data(G_OBJECT(rx->panel), "zen_grip", zg);
+    gtk_fixed_put(GTK_FIXED(rx->panel), zg, 0, 0);
+    gtk_widget_show(zg);
+  }
+  if (zg != NULL) {
+    GtkWidget *par = gtk_widget_get_parent(zg);
+    if (par != NULL) { g_object_ref(zg); gtk_container_remove(GTK_CONTAINER(par), zg); gtk_fixed_put(GTK_FIXED(rx->panel), zg, 0, 0); g_object_unref(zg); }
+  }
+  if (rx->width + 2 * RX_DISPLAY_INSET > 40 && rx->height > 40) {
+    gtk_fixed_move(GTK_FIXED(rx->panel), zg, rx->width + 2 * RX_DISPLAY_INSET - 28, rx->height - 28);
+    g_print("ZGRIP: at %d,%d panel w=%d h=%d\n", rx->width + 2 * RX_DISPLAY_INSET - 28, rx->height - 28, rx->width, rx->height);
+  }
+  zen_reposition_unzen(rx);
+  zen_fit_window(rx);
+}
 void rx_reconfigure(RECEIVER *rx, int height) {
   int y = RX_DISPLAY_INSET;
   //
@@ -638,6 +815,7 @@ void rx_reconfigure(RECEIVER *rx, int height) {
   }
 
   gtk_widget_show_all(rx->panel);
+  zen_ensure_grip(rx);
 }
 
 //

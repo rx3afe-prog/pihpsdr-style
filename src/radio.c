@@ -17,6 +17,8 @@
 *
 */
 
+extern int zen_w;
+extern int zen_h;
 #include <gtk/gtk.h>
 extern int zen_geom_reapply(gpointer data);  // ZGEOMFIX
 #include <math.h>
@@ -348,6 +350,12 @@ static SaturnSerialPort SaturnSerialPortsList[] = {
 static void radio_restore_state(void);
 
 //
+//
+// Set while the Menu/Show buttons are hidden together with the
+// floating toolbar (Ctrl+T or the floating window close box).
+//
+static int tb_buttons_hidden = 0;
+
 // This is the key-press handler which is activated as soon as the
 // radio is running
 //
@@ -453,6 +461,32 @@ gboolean radio_keypress_cb(GtkWidget *widget, GdkEventKey *event, gpointer data)
 
   case GDK_KEY_I:
     radio_iconify();
+    break;
+
+  //
+  // Ctrl+T: toggle the floating toolbar. When hiding it, the
+  // Menu/Show buttons in the top right corner are hidden too;
+  // 'm' still opens the main menu.
+  //
+  case GDK_KEY_t:
+  case GDK_KEY_T:
+    if (event->state & GDK_CONTROL_MASK) {
+      if (radio_is_transmitting() && !duplex) { break; }
+      if (floating_toolbar) {
+        floating_toolbar = 0;
+        toolbar_destroy_floating();
+        radio_floating_toolbar_hide_buttons();
+        radio_reconfigure_screen();
+      } else {
+        floating_toolbar = 1;
+        tb_buttons_hidden = 0;
+        gtk_widget_show(menu_b);
+        gtk_widget_show(hide_b);
+        radio_reconfigure_screen();
+      }
+    } else {
+      ret = FALSE;
+    }
     break;
 
   //
@@ -573,7 +607,7 @@ static void choose_vfo_layout(void) {
   // choose largest possible VFO layout that fits
   //
   vfo_layout_ensure();
-  const int menu_w = floating_toolbar ? 0 : MENU_WIDTH;  // Menu/Hide live in the floating toolbar
+  const int menu_w = (floating_toolbar || tb_buttons_hidden) ? 0 : MENU_WIDTH;  // Menu/Hide live in the floating toolbar
   const VFO_BAR_LAYOUT *vfl = vfo_layout_list;
   int avail = display_width[display_size] - menu_w - MIN_METER_WIDTH;
 
@@ -769,7 +803,7 @@ void radio_reconfigure_screen(void) {
     gtk_window_move(GTK_WINDOW(top_window), 0, 0);
   }
 
-  gtk_window_resize(GTK_WINDOW(top_window), my_width, my_height);
+  // OFF-ZA-GLADKOST:   gtk_window_resize(GTK_WINDOW(top_window), my_width, my_height);
 
   //
   // Hide/Menu buttons live in the floating toolbar (not in "fixed")
@@ -870,9 +904,9 @@ void radio_reconfigure(void) {
     for (i = 0; i < receivers; i++) {
       RECEIVER *rx = receiver[i];
       g_mutex_lock(&rx->display_mutex);
-      rx->width = my_width / receivers - 2 * RX_DISPLAY_INSET;
+      rx->width = (rx->id == 0 && zen_w > 0 ? zen_w : my_width / receivers) - 2 * RX_DISPLAY_INSET; /* ZENPULL */
       rx_update_width(rx);
-      rx_reconfigure(rx, rx_height);
+      rx_reconfigure(rx, (rx->id == 0 && zen_h > 0) ? zen_h : rx_height); /* ZENPULL */
 
       if (!radio_is_transmitting() || duplex) {
         gtk_layout_move(GTK_LAYOUT(fixed), rx->panel, x, y);
@@ -979,6 +1013,18 @@ static gboolean hideall_cb  (GtkWidget *widget, GdkEventButton *event, gpointer 
 static gboolean menu_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   new_menu();
   return TRUE;
+}
+
+//
+// Hide the Menu/Show buttons in the top right corner: used when the
+// floating toolbar is closed, so nothing stays on the main screen.
+// Called from toolbar.c before radio_reconfigure_screen, so the
+// layout does not reserve space for the hidden buttons.
+//
+void radio_floating_toolbar_hide_buttons(void) {
+  tb_buttons_hidden = 1;
+  if (menu_b != NULL) { gtk_widget_hide(menu_b); }
+  if (hide_b != NULL) { gtk_widget_hide(hide_b); }
 }
 
 static void radio_create_visual(void) {

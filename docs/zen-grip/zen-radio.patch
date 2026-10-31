@@ -1,0 +1,23 @@
+--- src/radio.c.bak-zen	2026-10-31 22:31:03.673227691 +0300
++++ src/radio.c	2026-10-31 22:31:14.076782484 +0300
+@@ -17,6 +17,8 @@
+ *
+ */
+ 
++extern int zen_w;
++extern int zen_h;
+ #include <gtk/gtk.h>
+ extern int zen_geom_reapply(gpointer data);  // ZGEOMFIX
+ #include <math.h>
+@@ -902,9 +904,9 @@
+     for (i = 0; i < receivers; i++) {
+       RECEIVER *rx = receiver[i];
+       g_mutex_lock(&rx->display_mutex);
+-      rx->width = my_width / receivers - 2 * RX_DISPLAY_INSET;
++      rx->width = (rx->id == 0 && zen_w > 0 ? zen_w : my_width / receivers) - 2 * RX_DISPLAY_INSET; /* ZENPULL */
+       rx_update_width(rx);
+-      rx_reconfigure(rx, rx_height);
++      rx_reconfigure(rx, (rx->id == 0 && zen_h > 0) ? zen_h : rx_height); /* ZENPULL */
+ 
+       if (!radio_is_transmitting() || duplex) {
+         gtk_layout_move(GTK_LAYOUT(fixed), rx->panel, x, y);
