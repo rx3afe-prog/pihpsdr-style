@@ -1,0 +1,19 @@
+Determining if the function rtlsdr_set_dithering exists failed with the following output:
+Change Dir: /home/miket/temp/LINUX/SoapyRTLSDR/build/CMakeFiles/CMakeScratch/TryCompile-7emPsb
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_d528f/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_d528f.dir/build.make CMakeFiles/cmTC_d528f.dir/build
+gmake[1]: Entering directory '/home/miket/temp/LINUX/SoapyRTLSDR/build/CMakeFiles/CMakeScratch/TryCompile-7emPsb'
+Building CXX object CMakeFiles/cmTC_d528f.dir/CheckFunctionExists.cxx.o
+/usr/bin/c++   -std=c++11 -DCHECK_FUNCTION_EXISTS=rtlsdr_set_dithering -o CMakeFiles/cmTC_d528f.dir/CheckFunctionExists.cxx.o -c /home/miket/temp/LINUX/SoapyRTLSDR/build/CMakeFiles/CMakeScratch/TryCompile-7emPsb/CheckFunctionExists.cxx
+Linking CXX executable cmTC_d528f
+/usr/bin/cmake -E cmake_link_script CMakeFiles/cmTC_d528f.dir/link.txt --verbose=1
+/usr/bin/c++  -std=c++11 -DCHECK_FUNCTION_EXISTS=rtlsdr_set_dithering CMakeFiles/cmTC_d528f.dir/CheckFunctionExists.cxx.o -o cmTC_d528f  /usr/lib/aarch64-linux-gnu/librtlsdr.so -pthread 
+/usr/bin/ld: CMakeFiles/cmTC_d528f.dir/CheckFunctionExists.cxx.o: in function `main':
+CheckFunctionExists.cxx:(.text+0x10): undefined reference to `rtlsdr_set_dithering'
+collect2: error: ld returned 1 exit status
+gmake[1]: *** [CMakeFiles/cmTC_d528f.dir/build.make:100: cmTC_d528f] Error 1
+gmake[1]: Leaving directory '/home/miket/temp/LINUX/SoapyRTLSDR/build/CMakeFiles/CMakeScratch/TryCompile-7emPsb'
+gmake: *** [Makefile:127: cmTC_d528f/fast] Error 2
+
+
+

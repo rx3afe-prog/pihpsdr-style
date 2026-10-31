@@ -1,0 +1,377 @@
+LIST OF RECENT PIHPSDR CHANGES
+==============================
+October 2026:
+-------------
+
+- Updated About Information with piHPSDR-Improved details.
+
+- Version bumped from v2.45 to v2.451.
+
+- The Display menu spinners for Panadapter High/Low and Waterfall High/Low
+  (RX1 and RX2) are now updated when the levels change while the menu is
+  open, e.g. at a band change or when the levels are changed with a
+  knob/MIDI action. Before, they kept showing the values from the time the
+  menu was opened. Tested.
+
+- Waterfall High and Low levels are now stored "by the band", exactly as the
+  panadapter High and Low levels: they are applied when the band changes (for
+  RX1 and for RX2, which uses its own per-band memory), and are saved in the
+  props file as band.N.wfhigh / band.N.wflow (and band.N.rx2.wfhigh /
+  band.N.rx2.wflow). Props files from earlier versions keep their
+  waterfall settings: all bands start with the former per-receiver values.
+  The Display menu and the WATERFALL_HIGH / WATERFALL_LOW actions use the new
+  radio_set_wfhigh() / radio_set_wflow() functions. The WATERFALL_LOW action
+  also shows its popup slider with the correct title now. Tested for RX1
+  and RX2.
+
+- The memory menu labels now show SPLIT and DUP, in addition to SAT/RSAT,
+  frequency, mode and filter width, for slots that have these settings
+  stored (e.g. "M3= 145.500 MHz (SAT, SPLIT, DUP, FMN, 16k)"). Tested.
+
+- Memory slots now store the SPLIT and DUP (duplex) settings also in the
+  props file (mem.N.split, mem.N.duplex), and recalling a slot applies them
+  for all slots, not only for SAT/RSAT slots. Slots saved with earlier
+  versions have no such data and turn SPLIT and DUP off when recalled.
+  For remote operation, the memory data sent from the server now includes
+  split and duplex, so CLIENT_SERVER_VERSION is bumped; client and server
+  must be of the same version. Also fixed: the VFO-B frequencies of a memory
+  slot were sent to the client with the VFO-A values. Tested locally; the
+  client/server part is untested.
+
+- Version bumped from v2.44 to v2.45.
+
+- 60m channels in bandplan.json now have an "access" field, "TX" or "RX".
+  A receive-only channel (e.g. RAF Volmet, Shannon Volmet, set to "RX" in
+  the shipped file) is still shown on the panadapter but transmitting on it
+  is never allowed, even when out-of-band TX is enabled; with out-of-band TX
+  enabled the rest of 60m is unaffected. A missing or unrecognised value
+  means "TX", so existing bandplan.json files behave as before, and the
+  generated default bandplan.json now includes the field.
+
+- The 60m band upper edge is raised from 5450 kHz to 5510 kHz so that the
+  Volmet channels (5451.5 and 5506.5 kHz) fall inside the 60m band and keep
+  their channel markers. TX on 60m is still restricted to the channels in
+  bandplan.json. Props files saved with the old limits are widened to the new
+  60m limits on restore (only widened, other bands and hand-edited limits are
+  not changed), and the new value is written back on the next save.
+
+- A coloured frame now surrounds VFO Bar, VFOA Panadapter/Waterfall and VFOB Panadapter/Waterfall.
+  Active Panadapter/Waterfall frame goes green and non-active goes light blue.
+  VFO Bar frame set to red.
+  Frames are only rendered when the window size is 1888 x 980 or above, below this size
+  there are no frames to keep display area to a maximum.
+
+- With the floating toolbar active, the VFO bar and meter now extend to the
+  right edge of the window. Before, the 60 pixel column normally used by the
+  Menu/Hide buttons stayed empty for layouts with the meter next to the VFO
+  bar (e.g. at 1280x600). The layout choice and the meter sizing and
+  position now treat that column as available.
+
+- Slider label font on narrow windows (below 900 pixels wide, where only 3
+  sliders are shown per row) is reduced: the font size is now chosen as for
+  5 sliders per row instead of growing with the wider labels (e.g. 16 pixel
+  instead of 26 pixel at 800x488), so the labels take less space and the
+  slider bars are longer. Wider windows are unchanged.
+
+- Version bumped from v2.43 to v2.44.
+
+- Compiler warnings cleaned up (no functional change): the 60m channel
+  tables in band.c use designated initialisers, the CWTxt entries in the CW
+  menu are set directly from the stored text, and the TCI CW callsign/suffix
+  message buffers in tci.c are enlarged so they cannot be truncated. The
+  build is now free of warnings. 60m channel markers and CWTxt entries
+  tested; the TCI change is untested (no TCI facility available).
+
+- Toolbar buttons now show their state: MOX, TUNE, ANF, SNB, CTUN, Split,
+  Dup, Sat and RSat have a red background while the function is ON. NR is
+  red while NR1-NR4 is active and NB while NB or NB2 is active; both return
+  to the normal colour when switched off. RIT+/XIT+ are red while the RIT/XIT
+  offset is positive, RIT-/XIT- while it is negative; both return to the
+  normal colour when the offset is 0. The state is read from the radio, so it
+  also follows CAT, MIDI, GPIO and keyboard changes, and works in the
+  embedded and the floating toolbar.
+
+- The Classic theme is now the default theme when no theme has been saved
+  in the props file (before: the first theme, "piHPSDR"). Saved settings
+  are unaffected, so existing users keep their selected theme.
+
+- The background colour of the slider area now follows the VFO bar
+  background colour of the selected theme (before: fixed GTK default
+  colour). This applies to the normal slider rows and to the sliders of
+  the floating toolbar, and is updated when the theme is changed or
+  reloaded.
+
+- The Var1/Var2 filters are renamed PBT1/PBT2 and now work like the Icom
+  Pass Band Tuning in all modes: the Filter Width control moves both filter
+  edges symmetrically (0 to 16000 Hz), the Filter Shift control slides the
+  whole pass-band up and down by up to +/- the current width. Shift 0 is
+  the centre of the mode's default filter; for LSB, DIGL and CWL a positive
+  shift always means towards higher audio pitch. SSB/DIG pass-bands cannot
+  cross the carrier. The Default button (and the built-in default) is now a
+  2700 Hz wide filter with shift 0 in every mode (before: mode-specific
+  widths, e.g. 250 Hz for CW). The edges are still stored as low/high
+  (props keys keep their old var1/var2 names), so saved settings, CAT and
+  client/server operation are unaffected. Tested on Intel/AMD Kubuntu,
+  Linux Mint and Raspberry Pi OS.
+
+- "VFO for LARGE Screens" layout: the status items in the centre of the VFO
+  bar are now arranged in rows by function: AGC/NR/NB/ANF/SNB/DIV (receive
+  DSP), RxEQ/Cmpr/DExp/VOX/PS (audio and TX processing),
+  Split/Sat/Dup/CTUN/Step/Locked (VFO and frequency) and Zoom/CAT (display
+  and control). The block is centered between the VFO A and VFO B groups
+  and stays centered if the VFO bar is wider than the layout (or the
+  floating toolbar is toggled). Delete your vfo_layouts.json to get the new
+  arrangement.
+
+- "VFO for LARGE Screens" layout: each VFO now has its own Mode/Filter
+  display (mode, filter width and filter-edge picture) next to its
+  frequency and meter: VFO A's right of the VFO A meter, VFO B's left of
+  the VFO B meter. Before, there was one display for the active receiver.
+  - The CW speed/tone and the FM CTCSS tone are on a second line.
+  - The filter picture now compares the actual filter edges with the
+    mode's default Var1/Var2 edges, so changing the Var1/Var2 edges in the
+    filter menu is visible (red line longer, shorter or shifted against the
+    green one; before, both were always identical). The VFO bar is redrawn
+    whenever Var edges are changed. Tested successfully for both VFOs;
+    the picture reacting to Var filter edge changes had never worked in
+    earlier piHPSDR versions.
+  - VFO B's display is also shown when only one receiver is displayed. It
+    is right-aligned directly left of the VFO B meter, with the
+    multifunction string below it, and moves with the VFO B group. RIT and
+    XIT are now in the centre block.
+  - A left click on a display opens the mode menu, a right click the filter
+    menu, of that VFO.
+  - New per-layout fields mode_b_x/mode_b_y/filter_b_x/filter_b_y in
+    vfo_layouts.json for VFO B's display (right-anchored like VFO B). If
+    meter_b_x is set, mode_x/filter_x are VFO A's display, and mode_b_x and
+    multifn_x are right edges. Delete your
+    vfo_layouts.json to get the new layout. Other layouts are unchanged.
+  - The filter edges shown are calculated from the VFO settings by the new
+    function vfo_filter_edges(), which rx_set_filter() now also uses.
+
+- "VFO for LARGE Screens" layout: RX2 now has its own S-meter. The meter
+  under the VFO A frequency shows RX1 only; an identical meter under the
+  VFO B frequency, at the right-hand end of the VFO bar, shows RX2. Both are
+  live when two receivers are displayed; with one receiver only the VFO A
+  meter is shown. The RX2 meter has its extended metering (Mic/Gain/Out) on
+  its left, next to the dial.
+  - VFO B is now at the top of the right-hand group (like VFO A), and the
+    group is anchored to the right edge of the VFO bar. It moves left by the
+    width of the Menu/Hide column when the floating toolbar is closed. Mode,
+    Filter, RIT, XIT and MultiFn stay where they were, to the left of it.
+    The design width of this layout is now 1760.
+  - TX metering is shown on the meter of the TX VFO: the RX2 meter when
+    transmitting on VFO B with two receivers, otherwise the RX1 meter.
+  - Clicking a meter makes its receiver the active receiver (this also
+    selects its VFO for TX) and then opens the Meter menu, so the per-receiver
+    Peak/Average setting applies to the receiver of the meter clicked.
+    Meter type and extended metering are shared by both meters.
+  - Closing the floating toolbar with its window button now also
+    re-calculates the VFO bar width.
+  - New per-layout field meter_b_x in vfo_layouts.json (RX2 meter x position
+    in layout coordinates, 0 = no RX2 meter and VFO B not right-anchored).
+    Delete your vfo_layouts.json to get the new layout.
+  - Layouts that embed the meter in the VFO bar no longer reserve space for
+    a separate meter when checking whether they fit the screen.
+  - Other layouts are unchanged: they keep the single meter, which follows
+    the active receiver.
+
+- "VFO for LARGE Screens" layout: VFO A and the S-meter are now at the left
+  of the VFO bar, with the meter underneath the (smaller) frequency digits.
+  VFO B and the other items keep their positions, but share the smaller
+  digit fonts. With the floating toolbar in use, the VFO bar extends over
+  the former Menu/Hide column.
+  - New per-layout fields meter_x/meter_y/meter_w/meter_h in
+    vfo_layouts.json (0 = old placement, meter right of the VFO bar). Delete
+    your vfo_layouts.json to get the new layout.
+  - The default S-meter type is now Dualscale (saved settings are unchanged).
+  - All meter types (Digital, Analog, Edgewise, Dualscale; RX and TX) now
+    scale their text and scales to the meter height as well as its width,
+    so they fit the smaller meter box. The Analog dial is stretched
+    horizontally to use the width, and the Edgewise dial is wider, with its
+    top labels no longer clipped. Other layouts are unchanged.
+  - Extended metering (Mic/Gain/Out on RX, Mic/Alc/Out on TX) is shown to the
+    right of the S-meter in this layout, in a smaller font (the smaller font
+    also applies to the other layouts, where the strip stays on the left).
+
+- LINUX/libinstall.sh (and the other install scripts) now work when the
+  path to the script, or any directory above it, contains spaces. Before,
+  unquoted $0, $SCRIPTFILE, $THISDIR, $TARGET and $PIHPSDR were split by
+  the shell, so the "cd" commands into the Soapy source directories
+  failed, cmake/make install did not run, and the pihpsdr.sh start script
+  could not be written ("ambiguous redirect"). All these expansions are
+  now quoted, and the generated pihpsdr.sh quotes its paths too. Same fix
+  in LINUX/soapy.*.sh and MacOS/libinstall.sh. The Makefile needed no
+  change (relative paths only). Tested on Raspberry Pi OS, Linux Mint and
+  Kubuntu with the tree in a directory with spaces in its name.
+
+- Floating Toolbar: the sliders now move into the floating toolbar's
+  window while it is in use. There is one slider per button row, to the
+  right of the buttons, in a block two buttons wide (the top slider is on
+  the Menu/Hide row), using a smaller label font (new CSS class "slider0"
+  in css.c). The "Slider rows" setting still applies (1 row = 5 sliders,
+  2 rows = 9, 0 or Hide = none) and the sliders are rebuilt when the
+  slider functions or rows are changed. The space the sliders used at the
+  bottom of the main window is given to the panadapter/waterfall(s), so
+  nothing is wasted. When the floating toolbar is closed the sliders go
+  back to the main window. Code: sliders.c (per-slider creation moved to
+  sliders_add(), new sliders_create_floating()), toolbar.c, radio.c.
+  Tested on Linux Mint and Kubuntu (Intel/AMD) with ordinary RF/ATT
+  sliders. NOTE: the CHARLY25 Att/Pre combo box in the floating toolbar
+  has not been tested (no CHARLY25 board available).
+
+- When the floating toolbar is in use, the main menu and all sub-menus now
+  open centred over the floating toolbar instead of centred on the main
+  window (new toolbar_menu_parent() in toolbar.c, used where each menu
+  dialog is made transient). Without the floating toolbar nothing changes.
+  Tested on Raspberry Pi OS, Kubuntu (KDE Plasma) and Linux Mint: menus
+  centre on the floating toolbar, and when the toolbar is near a screen
+  edge or corner the menu is moved so that it stays fully on screen.
+
+- The Desktop icon and desktop-menu entry for piHPSDR-Improved are now
+  created by piHPSDR-Improved-Installer.py instead of LINUX/libinstall.sh.
+  libinstall.sh runs as root, so the old .desktop file was owned by root,
+  had mode 666 and was not usable. The installer now writes
+  pihpsdr-improved.desktop as the real user (mode 750, marked trusted via
+  "gio" where available) to both the Desktop folder and
+  ~/.local/share/applications, so piHPSDR-Improved appears in the KDE,
+  Linux Mint and GNOME menus with the piHPSDR logo. Path= is set to the
+  install directory so the working directory is correct. Old entries are
+  removed first. Tested on Raspberry Pi OS, Kubuntu (KDE Plasma) and
+  Linux Mint: icon and menu entry appear correctly.
+
+- The rigctl (CAT) TCP server on port 19090 now accepts up to 6
+  simultaneous connections instead of 3 (MAX_TCP_CLIENTS in rigctl.c,
+  and the listen() backlog now uses the same constant). Tested with 6
+  simultaneous "nc" connections: all six are served, and a 7th
+  connection waits until one of the others is dropped and then
+  connects. The TCI server is not affected (it already allows 8).
+
+- VERSION changed to read "v2.43".
+
+- piHPSDR-Improved-Installer.py now detects the screen size and shrinks
+  the installer window and its banner image to fit, so that on small,
+  low-resolution displays (such as the 7in screens on RadioBerry
+  devices) the window no longer extends off the bottom of the screen.
+  The banner is dropped entirely if there is no room for it. On larger
+  screens the layout is unchanged. NOTE: this change has not been tested
+  yet.
+
+September 2026:
+---------------
+
+- Added "sudo apt-get --yes install python3-tk" to LINUX/libinstall.sh so
+  that the package is installed, ready for piSync, which is part of this
+  release.
+
+- VERSION changed to read "v2.42 RC1".
+
+- This RC1 has been tested on Linux Mint v21.3 and v22.1 and Kubuntu
+  22.04 LTS on Intel/AMD, and also on a Raspberry Pi 500+ running
+  Debian 12 (bookworm) with KDE Plasma.
+
+- The Ant menu can now be put on the toolbar. A new "Ant Menu" function
+  (button label "ANT") is available in the Toolbar menu's function
+  chooser, so the Ant menu opens with a single click instead of going
+  through Main Menu -> Ant. Existing toolbar layouts are unchanged.
+
+- Fixed bug in the sliders bar: when the window width was set below 900
+  pixels in the Screen menu, the sliders bar was wider than the window,
+  which kept the window wider than the selected size while the
+  panadapter/waterfall resized correctly. For widths below 900 pixels the
+  sliders are now laid out 3 per row instead of 5, using extra rows as
+  needed so that the same sliders remain visible and everything fits
+  within the selected window size. The "Slider Rows" setting and the
+  slider assignments are unchanged. (The limit was 800 pixels before, which
+  still left the sliders bar 900 pixels wide for window widths from 800 to
+  899, so there was a gap right of the Menu/Hide buttons.) Tested at 800,
+  832, 864, 896, 900, 938, 959, 960, 1024 and 1888 pixels width.
+
+- Frames around the displays (large screens only, 1888x980 or larger; the
+  layout of smaller screens is unchanged): each receiver (panadapter and
+  waterfall together) gets a thin rounded 2 pixel frame, bright green for the
+  active receiver and light blue for the other one (green when only one
+  receiver is displayed). The colours swap when the active receiver changes.
+  With two receivers (side by side or stacked) there is a gap between them
+  painted in the VFO bar background colour, and the displays are inset so that
+  the frame does not hide the frequency scale. The VFO bar gets a red frame of
+  the same style. To make room for it the contents of the VFO bar and the
+  meters are moved in by 10 pixels at both ends. Code: receiver.c,
+  receiver.h (frame constants, FRAMES_MIN_WIDTH/HEIGHT), radio.c, vfo.c.
+
+- Fixed bug in the Floating Toolbar: after restarting piHPSDR-Improved the
+  toolbar buttons came up smaller than the ones in the main window,
+  because the toolbar height was used before it had been calculated from
+  the display height. The floating toolbar is now also rebuilt (keeping
+  its position) when the button height changes, e.g. after changing the
+  display size.
+
+- The project is now called "piHPSDR-Improved". All window titles that
+  said "piHPSDR" (menu and dialog title bars, the floating toolbar, the
+  main window and remote-client title bars, and the configuration
+  version warning) now say "piHPSDR-Improved". Internal names such as
+  the audio/MIDI client names, theme name and property files are
+  unchanged, so existing configurations keep working.
+
+- Floating Toolbar: the "Menu" and "Hide" buttons now move into the
+  floating toolbar's window (in a row above the toolbar buttons) while
+  it is active, instead of staying behind in the main window's VFO
+  area, so all the controls are reachable in one place. They move back
+  to their usual spot when the floating toolbar is turned off.
+
+- New graphical installer (piHPSDR-Improved-Installer.py) for Linux: a GTK3 wizard, run with
+  "python3 piHPSDR-Improved-Installer.py" or by double-clicking it in a file manager, aimed
+  at users who are not comfortable with the command line. It lets the user
+  choose GPIO and SoapySDR support, then runs LINUX/libinstall.sh and
+  "make clean && make" for them, with progress shown live in the window and
+  a "Launch piHPSDR now" button when done. See README.md.
+
+- Fixed bug in Makefile that deletes the pihpsdr/LINUX/SoapySDR directory
+  during a 'make clean'.
+
+- Toolbar: new "Floating Toolbar" option (Display menu) detaches the
+  toolbar into its own top-level window, showing toolbar row 0 as
+  8 rows of 2 buttons instead of embedded in the main window. The
+  reclaimed space is used by the other panels; the sliders area is
+  unaffected. The floating window's position is remembered across
+  restarts, and closing it un-checks the option again.
+
+- Toolbar: button width halved, number of buttons per row adapts to the
+  screen width (8 ... 16 buttons, rightmost is always FNC). New slots
+  are initially empty ("NONE"). Toolbar menu shows as many slots per
+  row as the toolbar. Old props files are converted automatically.
+  Andromeda: 8th function switch now explicitly acts as FNC.
+
+- Bug fix: when compiled with GPIO, every radio (e.g. Hermes Lite 2) was
+  treated as a G2V2. This showed the "G2 Panel" menu, forced the GPIO
+  controller to "No Controller" and skipped GPIO initialisation. G2V1/G2V2
+  are now only detected for an ANAN G2 (Saturn) connected via XDMA.
+
+- RX2 per-band memory: RX2 (VFO-B) now remembers, per band, its
+  frequency, mode, filter, CTUN (and CTUN frequency), deviation,
+  bandstack slot and panadapter high/low/step (props: band.N.rx2.*).
+  RF gain/attenuation is stored for RX2 only if it uses its own ADC.
+  On a single-ADC radio (e.g. HL2), a band change on RX2 no longer
+  changes the gain/attenuation of the shared ADC. RX2 falls back to the
+  RX1 bandstack for bands it has not used yet.
+
+- Bug fix: changing the panadapter low level by dragging with the mouse
+  is now stored per band (RX1 and RX2).
+
+- Sliders area: 5 sliders per row (was 3) with narrower labels and a
+  smaller label font, so all 9 sliders fit into two rows. The maximum
+  number of slider rows is now 2 (props files with 3 rows are reduced
+  to 2). The Sliders menu uses the same 5-per-row layout.
+
+- Default radio window size is now 1920x1080 (limited to the monitor
+  size) if no size is stored in the props file. The splash/discovery
+  screen keeps its default size of 832x500.
+
+- Splash/main-window logo replaced with the new "piHPSDR Improved" logo,
+  resized to 155x134 to match the previous logo's footprint. It remains
+  compiled into the binary as an embedded PNG (src/piHPSDR_logo.c); no
+  external image file is needed at runtime.
+
+
+----------
+

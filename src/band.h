@@ -1,0 +1,179 @@
+/* Copyright (C)
+* 2015 - John Melton, G0ORX/N6LYT
+* 2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#ifndef _BAND_H_
+#define _BAND_H_
+
+#include <gtk/gtk.h>
+#include "bandstack.h"
+
+enum _band_enum {
+  band136 = 0,
+  band472,
+  band160,
+  band80,
+  band60,
+  band40,
+  band30,
+  band20,
+  band17,
+  band15,
+  band12,
+  band10,
+  band6,
+  band70,
+  band144,
+  band220,
+  band430,
+  band902,
+  band1240,
+  band2300,
+  band3400,
+  bandAIR,
+  bandWWV,
+  bandGen,
+  BANDS
+};
+
+#define XVTRS 10
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief Band definition
+*/
+struct _BAND {
+  char title[16];                 // band title
+  BANDSTACK *bandstack;           // pointer to band stack
+  //
+  // Data that can be changed via menus etc.
+  //
+  unsigned char OCrx;             // OC bit pattern for RX
+  unsigned char OCtx;             // OC bit pattern for TX
+  int gaincalib;                  // band dependent RX gain offset
+  int RxAntenna;                  // (ALEX) RX antenna
+  int TxAntenna;                  // (ALEX) TX antenna
+  double pa_calibration;          // PA calibration value for this band
+  long long frequencyMin;         // lower band edge
+  long long frequencyMax;         // upper band edge
+  long long frequencyLO;          // frequency offset
+  long long errorLO;              // band dependent LO frequency correction
+  int disablePA;                  // if 1, PA is disabled for this band
+  //
+  // Data that is automatically stored here, and applied whenever
+  // a band change is done
+  //
+  int preamp;                     // This is to support C25 attenuation storage
+  int dither;                     // This is to support C25 attenuation storage
+  double gain;                    // position of the RF gain slider
+  int attenuation;                // position of the ATT slider
+  int alexAttenuation;            // if ALEX: attenuator (0/1/2/3 for 0/10/20/30 dB)
+  int panlow;                     // panadapter settings
+  int panhigh;
+  int panstep;
+  int wflow;                      // waterfall settings
+  int wfhigh;
+};
+
+//
+// Note that several entries are compile-time constants for non-XVTR bands,
+// that is, there is no GUI to change then, and they are not read from the
+// props file:
+//
+// title, frequencyMin, frequencyMax, frequencyLO, errorLO, disablePA, gain
+//
+
+typedef struct _BAND BAND;
+
+//
+// Per-band memory for RX2 (VFO-B). RX1 stores its per-band data in the
+// bandstack and the BAND structure; RX2 stores the last-used settings of each
+// band here, such that they are restored when RX2 returns to that band.
+//
+// valid:        VFO data (frequency ... deviation) has been stored
+// levels_valid: panadapter levels (and gain/attenuation if RX2 has its own ADC)
+//               have been stored
+//
+struct _RX2_BAND {
+  int valid;
+  int bandstack;
+  long long frequency;
+  int ctun;
+  long long ctun_frequency;
+  int mode;
+  int filter;
+  int deviation;
+  int levels_valid;
+  int panhigh;
+  int panlow;
+  int panstep;
+  int wfhigh;
+  int wflow;
+  int attenuation;
+  double gain;
+};
+
+typedef struct _RX2_BAND RX2_BAND;
+
+struct _CHANNEL {
+  long long frequency;
+  long long width;
+  char label[32];         // optional segment label drawn on the panadapter
+  float colour[4];        // optional RGBA fill; alpha <= 0 means "use the theme's pan_60m colour"
+  float label_colour[4];  // optional RGBA label colour; alpha <= 0 means "use the theme's pan_text colour"
+  int rx_only;            // 1: receive-only channel (e.g. VOLMET), TX never allowed; 0: TX allowed
+};
+
+typedef struct _CHANNEL CHANNEL;
+
+#define UK_CHANNEL_ENTRIES 11
+#define OTHER_CHANNEL_ENTRIES 5
+#define WRC15_CHANNEL_ENTRIES 1
+
+extern int channel_entries;
+extern CHANNEL *band_channels_60m;
+
+//
+// Runtime 60m band-plan (Issue 6): loaded from "bandplan.json" if present,
+// otherwise generated from the compiled-in defaults. bandplan_init() must run
+// before the first radio_change_region() so the region pointers are valid.
+//
+extern void bandplan_init(void);     // load bandplan.json (or write a default) at startup
+extern void bandplan_reload(void);   // re-read bandplan.json (Reload action)
+
+//extern CHANNEL band_channels_60m_UK[UK_CHANNEL_ENTRIES];
+//extern CHANNEL band_channels_60m_OTHER[OTHER_CHANNEL_ENTRIES];
+//extern CHANNEL band_channels_60m_WRC15[WRC15_CHANNEL_ENTRIES];
+
+extern BAND *band_get_band(int b);
+extern RX2_BAND *band_get_rx2(int b);
+extern int get_band_from_frequency(long long f);
+
+extern BANDSTACK *bandstack_get_bandstack(int band);
+
+extern void radio_change_region(int region);
+
+extern void band_save_state(void);
+extern void band_restore_state(void);
+
+char* getFrequencyInfo(long long frequency, int filter_low, int filter_high);
+int TransmitAllowed(void);
+
+extern void band_minus(int id);
+extern void band_plus(int id);
+#endif

@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapyPlutoSDR/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

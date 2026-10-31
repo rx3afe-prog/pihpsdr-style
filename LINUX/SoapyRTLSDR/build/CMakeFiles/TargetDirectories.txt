@@ -1,0 +1,8 @@
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/rtlsdrSupport.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/uninstall.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/edit_cache.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/rebuild_cache.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/list_install_components.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/install.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/install/local.dir
+/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/CMakeFiles/install/strip.dir

@@ -1,0 +1,35 @@
+Looking for a CSharp compiler failed with the following output:
+CMake Error at /usr/share/cmake-3.25/Modules/CMakeDetermineCSharpCompiler.cmake:5 (message):
+  C# is currently only supported for Microsoft Visual Studio 11 2012 and
+  later.
+Call Stack (most recent call first):
+  CMakeLists.txt:2 (project)
+
+
+CMake Error: CMAKE_CSharp_COMPILER not set, after EnableLanguage
+-- Configuring incomplete, errors occurred!
+See also "/home/miket/temp/LINUX/SoapySDR/build/swig/csharp/CMakeFiles/CheckCSharp/CMakeFiles/CMakeOutput.log".
+
+Performing C++ SOURCE FILE Test SIZE_T_IS_UNSIGNED_INT failed with the following output:
+Change Dir: /home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B
+
+Run Build Command(s):/usr/bin/gmake -f Makefile cmTC_e7e18/fast && /usr/bin/gmake  -f CMakeFiles/cmTC_e7e18.dir/build.make CMakeFiles/cmTC_e7e18.dir/build
+gmake[1]: Entering directory '/home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B'
+Building CXX object CMakeFiles/cmTC_e7e18.dir/src.cxx.o
+/usr/bin/c++ -DSIZE_T_IS_UNSIGNED_INT  -std=gnu++11 -o CMakeFiles/cmTC_e7e18.dir/src.cxx.o -c /home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B/src.cxx
+/home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B/src.cxx: In function ‘int main()’:
+/home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B/src.cxx:4:38: error: cannot convert ‘unsigned int*’ to ‘size_t*’ {aka ‘long unsigned int*’} in initialization
+    4 |     size_t *x = (unsigned int *)(NULL);
+      |                                      ^
+gmake[1]: *** [CMakeFiles/cmTC_e7e18.dir/build.make:78: CMakeFiles/cmTC_e7e18.dir/src.cxx.o] Error 1
+gmake[1]: Leaving directory '/home/miket/temp/LINUX/SoapySDR/build/CMakeFiles/CMakeScratch/TryCompile-aPs58B'
+gmake: *** [Makefile:127: cmTC_e7e18/fast] Error 2
+
+
+Source file was:
+
+    #include <cstddef>
+    int main() {
+    size_t *x = (unsigned int *)(NULL);
+    return 0; }
+

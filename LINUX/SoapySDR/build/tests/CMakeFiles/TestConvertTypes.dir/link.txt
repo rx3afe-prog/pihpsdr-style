@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/TestConvertTypes.dir/link.d CMakeFiles/TestConvertTypes.dir/TestConvertTypes.cpp.o -o TestConvertTypes  -Wl,-rpath,/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/lib ../lib/libSoapySDR.so.0.8.1 -pthread

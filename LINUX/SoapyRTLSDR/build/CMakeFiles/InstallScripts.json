@@ -1,0 +1,7 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapyRTLSDR/build/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

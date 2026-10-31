@@ -1,0 +1,15 @@
+{
+	"InstallScripts" : 
+	[
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/lib/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/apps/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/tests/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/docs/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/swig/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/swig/csharp/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/swig/python/cmake_install.cmake",
+		"/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/luajit/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

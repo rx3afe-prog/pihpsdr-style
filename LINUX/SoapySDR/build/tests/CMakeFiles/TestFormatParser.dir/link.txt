@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/TestFormatParser.dir/link.d CMakeFiles/TestFormatParser.dir/TestFormatParser.cpp.o -o TestFormatParser  -Wl,-rpath,/home/rx3afe/piHPSDR-novaya/LINUX/SoapySDR/build/lib ../lib/libSoapySDR.so.0.8.1 -pthread

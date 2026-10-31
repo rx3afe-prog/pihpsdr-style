@@ -1,0 +1,7 @@
+property_version=3.00
+auto_reconnect=0
+audio_compression=0
+radio_tcp_enable=0
+current_host=127.0.0.1:50000
+num_hosts=1
+host[0]=127.0.0.1:50000
