@@ -1,0 +1,26 @@
+# Напоминалка для Алисы AI (следующая сессия)
+
+Проект: ~/piHPSDR-novaya, ветка master, база — коммит 788edc5 (тема RX3AFE).
+Последний коммит: 991d809 «zen grip: port from test-29 (code + patches + notes)».
+
+## Что сделано и работает
+- Перенесён zen-grip из piHPSDR-test-29: уголок «◢» в правом нижнем углу панорамы RX0.
+- Тянешь уголок — панорама и окно едут синхронно, за каждым пикселем руки.
+- Двойной клик по уголку — Un-Z, возврат к табличным размерам.
+- ZENOVH: окно ресайзится в rx->height + zen_overhead (~95 px при полном интерфейсе, 0 при Hide).
+- Коммит 991d809 включает: src/receiver.c, src/radio.c, README и патчи в docs/zen-grip/.
+
+## Ключевые маркеры в коде
+- ZENPULL — src/radio.c (2 точки: ширина и высота RX0 в radio_reconfigure).
+- ZENOVH — src/receiver.c (4 места).
+- ZENPULL-2 — вызов zen_ensure_grip(rx) после gtk_widget_show_all в конце rx_reconfigure.
+
+## Что дальше (если захочешь продолжить)
+- src/main.c, src/toolbar.c (правки «гладкости») ещё не закоммичены.
+- Патчи из docs/zen-grip/ не проверены на «ПАТЧ ТОЧЕН» (patch на копии бэкапов).
+- Патчи применять на будущей новой версии:
+  git apply docs/zen-grip/zen-receiver.patch docs/zen-grip/zen-radio.patch
+- Отладочные строки ZGRIP: и [zen] можно потом убрать в «тихой» сборке.
+
+## Как начать разговор
+Прикрепи этот файл к сообщению или вставь его текст первой репликой — и Алиса сразу в контексте.
