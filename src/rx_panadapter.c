@@ -44,6 +44,7 @@ int vfo_status_use_custom = 0;        /* PSTEXT PATCH */
 GdkRGBA vfo_status_color = { 1.0, 1.0, 1.0, 1.0 };
 double vfo_status_brightness = 1.0;
 double vfo_status_size_scale = 1.0;
+double zvfostat_size_scale = 1.0;  /* ZVFOSTAT: razmer nadpisey u filtra */
 #include <gdk/gdk.h>
 #include <math.h>
 #include <unistd.h>
@@ -1012,44 +1013,58 @@ void rx_panadapter_update(RECEIVER *rx) {
   }
 
 
-  // ZVFOSTAT: mode + shirina filtra sleva, chastota sprava (pod S-poloskoy)
+  // ZVFOSTAT-3: sleva ot filtra — moda+shirina, sprava — chastota
+  // tsvet/yarkost/zhirnost — ot regulyatorov "Shkala verhu" (hfreq_*)
   {
-    double vs = vfo_status_size_scale * scalfac;
-    double va;
-    if (vfo_status_use_custom) {
-      va = vfo_status_color.alpha * vfo_status_brightness;
-      cairo_set_source_rgba(cr, vfo_status_color.red, vfo_status_color.green, vfo_status_color.blue, va);
-    } else {
-      va = vfo_status_brightness;
-      cairo_set_source_rgba(cr, 0.90, 0.90, 0.90, va);
-    }
+    extern int hfreq_bold;
+    extern char hfreq_color_hex[];
+    extern char hfreq_tail_hex[];
+    extern double hfreq_bright;
+    double vs = zvfostat_size_scale * scalfac;
+    GdkRGBA zc = { 0.9, 0.9, 0.9, 1.0 };
+    GdkRGBA zt = { 0.9, 0.9, 0.9, 1.0 };
+    gdk_rgba_parse(&zc, hfreq_color_hex);
+    gdk_rgba_parse(&zt, hfreq_tail_hex);
     cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL,
         hfreq_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, 12.0 * vs);
-
-    const double bw = ((double)rx->width > 260.0) ? 240.0 : ((double)rx->width - 20.0);
-    const double xs = (double)rx->width - bw - 10.0;
     const double vy = 46.0;
 
+    /* moda+shirina: pravym krayem primykayet sleva k filtru */
     int fwidth = (int)(rx->filter_high - rx->filter_low);
     char fst[48];
     if (fwidth >= 1000) {
-      snprintf(fst, sizeof(fst), "%s %.1fk", mode_get_long_name(mode), fwidth / 1000.0);
+      snprintf(fst, sizeof(fst), "%s %.1fk", mode_string[mode], fwidth / 1000.0);
     } else {
-      snprintf(fst, sizeof(fst), "%s %d Hz", mode_get_long_name(mode), fwidth);
+      snprintf(fst, sizeof(fst), "%s %d Hz", mode_string[mode], fwidth);
     }
-    cairo_move_to(cr, xs, vy);
+    cairo_text_extents_t fe;
+    cairo_text_extents(cr, fst, &fe);
+    double zx = filter_left - 6.0 - fe.width;
+    if (zx < 4.0) { zx = 4.0; }
+    cairo_set_source_rgba(cr, zc.red, zc.green, zc.blue, zc.alpha * hfreq_bright);
+    cairo_move_to(cr, zx, vy);
     cairo_show_text(cr, fst);
 
+    /* chastota: tsifry — tsvet "chastoty", hvost ".Hz" — tsvet "hvosta" */
     long long zmhz = frequency / 1000000LL;
     long long zkhz = (frequency % 1000000LL) / 1000LL;
     long long zhz  = frequency % 1000LL;
-    char fqs[32];
-    snprintf(fqs, sizeof(fqs), "%lld.%03lld.%03lld", zmhz, zkhz, zhz);
-    cairo_text_extents_t ve;
-    cairo_text_extents(cr, fqs, &ve);
-    cairo_move_to(cr, xs + bw - ve.width, vy);
-    cairo_show_text(cr, fqs);
+    char fmain[16], ftail[8];
+    snprintf(fmain, sizeof(fmain), "%lld.%03lld", zmhz, zkhz);
+    snprintf(ftail, sizeof(ftail), ".%03lld", zhz);
+    cairo_text_extents_t em, et;
+    cairo_text_extents(cr, fmain, &em);
+    cairo_text_extents(cr, ftail, &et);
+    double fx = filter_right + 6.0;
+    if (fx + em.width + et.width > (double)rx->width - 4.0) {
+      fx = (double)rx->width - 4.0 - em.width - et.width;
+    }
+    cairo_set_source_rgba(cr, zc.red, zc.green, zc.blue, zc.alpha * hfreq_bright);
+    cairo_move_to(cr, fx, vy);
+    cairo_show_text(cr, fmain);
+    cairo_set_source_rgba(cr, zt.red, zt.green, zt.blue, zt.alpha * hfreq_bright);
+    cairo_show_text(cr, ftail);
   }
 
   // ZFREQ: compact frequency readout in the top-left corner

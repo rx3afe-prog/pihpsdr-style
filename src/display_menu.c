@@ -228,6 +228,7 @@ extern int vfo_status_use_custom;    /* PSTEXT PATCH */
 extern GdkRGBA vfo_status_color;
 extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
+extern double zvfostat_size_scale;  /* ZVFOSTAT: razmer napishey u filtra */
 extern GdkRGBA pan_dbm_color;
 extern GdkRGBA pan_freq_color;
 
@@ -381,6 +382,11 @@ static void vfo_status_brightness_cb(GtkWidget *widget, gpointer data) {
 static void vfo_status_size_cb(GtkWidget *widget, gpointer data) {
   vfo_status_size_scale = gtk_range_get_value(GTK_RANGE(widget));
 }
+
+static void zvfostat_size_cb(GtkWidget *widget, gpointer data) {
+  zvfostat_size_scale = gtk_range_get_value(GTK_RANGE(widget));
+}
+
 static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   GtkWidget *dlg = gtk_dialog_new();
   GtkWidget *cg = gtk_grid_new();
@@ -479,6 +485,13 @@ static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
   gtk_widget_set_size_request(w, 150, -1);
   gtk_grid_attach(GTK_GRID(cg), w, 1, 13, 1, 1);
   g_signal_connect(w, "value-changed", G_CALLBACK(vfo_status_size_cb), NULL);
+  l = gtk_label_new("Bar Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 14, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), zvfostat_size_scale);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 14, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(zvfostat_size_cb), NULL);
   gtk_window_set_default_size(GTK_WINDOW(dlg), 420, 620);
   tb_css_apply();
   gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);

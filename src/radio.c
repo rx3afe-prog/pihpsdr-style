@@ -4454,6 +4454,7 @@ extern int vfo_status_use_custom;    /* PSTEXT PATCH */
 extern GdkRGBA vfo_status_color;
 extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
+extern double zvfostat_size_scale;  /* ZVFOSTAT: razmer napishey u filtra */
 extern double pan_dbm_font_size;   /* PAN TEXT PATCH */
 extern double pan_freq_font_size;  /* PAN TEXT PATCH */
 extern GdkRGBA pan_dbm_color;      /* PAN TEXT PATCH */
@@ -4465,6 +4466,12 @@ static void pan_grid_save_custom(void) {
   const char* home = getenv("HOME");
   if (!home) { home = "."; }
   snprintf(path, sizeof(path), "%s/piHPSDR-build-ru/panadapter_grid.conf", home);
+  /* PIDIR FIX: sozdayom katalog, inache fopen tihо valitsya */
+  {
+    char dir[512];
+    snprintf(dir, sizeof(dir), "%s/piHPSDR-build-ru", home);
+    g_mkdir_with_parents(dir, 0755);
+  }
   f = fopen(path, "w");
   if (!f) { return; }
   fprintf(f, "use_custom_color=%d\n", pan_grid_use_custom_color);
@@ -4515,6 +4522,7 @@ static void pan_grid_save_custom(void) {
   fprintf(f, "status_color_a=%.4f\n", vfo_status_color.alpha);
   fprintf(f, "status_brightness=%.2f\n", vfo_status_brightness);
   fprintf(f, "status_size=%.2f\n", vfo_status_size_scale);
+  fprintf(f, "zvfostat_size=%.2f\n", zvfostat_size_scale);
   fclose(f);
 }
 
@@ -4624,6 +4632,8 @@ static void pan_grid_restore_custom(void) {
       vfo_status_brightness = atof(line + 18);
     } else if (strncmp(line, "status_size=", 12) == 0) {
       vfo_status_size_scale = atof(line + 12);
+    } else if (strncmp(line, "zvfostat_size=", 14) == 0) {
+      zvfostat_size_scale = atof(line + 14);
     }
   }
   fclose(f);
