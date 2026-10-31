@@ -1497,7 +1497,8 @@ extern int zen_active(void);
   // Draw VFO B Dial.
   //
   // -----------------------------------------------------------
-  if (vfl->vfo_b_l >= 0) {
+  /* ZFREQ-B: rodnoj readout B vyiklyuchen — tsifra B zhivet v zagolovke okna */
+  if (0) {
     cairo_move_to(cr, vfl->vfo_b_l + bdx, vfl->vfo_b_y);
 
     if (txvfo == 1 && (radio_is_transmitting() || oob)) {

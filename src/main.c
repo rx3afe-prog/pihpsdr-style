@@ -75,6 +75,15 @@ GtkWidget *top_window = NULL;
 //
 static GtkWidget *hfreq_label = NULL;
 //
+// ZFREQ-B: frequency of VFO B in the title bar, right side
+//
+GtkWidget *hfreq_b_label = NULL;  /* ZFREQ-B: ne static — pakuetsya iz radio.c ryadom s BAR */
+double hfreq_b_font_size = 22.0;
+char hfreq_b_color_hex[16] = "#e07810";
+char hfreq_b_tail_hex[16] = "#e07810";
+int hfreq_bold = 1;             /* ZFREQ-B: galochka Tolstyi shrift */
+double hfreq_bright = 100.0;    /* ZFREQ-B: yarkost shkaly, % */
+//
 // HEADERCFG: tunable header scale appearance
 //
 double hfreq_font_size = 22.0;
@@ -84,7 +93,9 @@ char hfreq_tail_hex[16] = "#006400";
 static GtkCssProvider *hfreq_css = NULL;
 
 void hfreq_css_apply(void) {
-  char css[256];
+  char css[512];
+  int r1, g1, b1, r2, g2, b2;
+  double ha;
   if (hfreq_label == NULL) return;
   if (hfreq_css != NULL) {
     gtk_style_context_remove_provider(gtk_widget_get_style_context(hfreq_label),
@@ -92,12 +103,21 @@ void hfreq_css_apply(void) {
     g_object_unref(hfreq_css);
   }
   hfreq_css = gtk_css_provider_new();
+  sscanf(hfreq_color_hex, "#%02x%02x%02x", &r1, &g1, &b1);
+  sscanf(hfreq_b_color_hex, "#%02x%02x%02x", &r2, &g2, &b2);
+  ha = hfreq_bright / 100.0;
   g_snprintf(css, sizeof(css),
-      "#hfreq_label { font-size: %.0fpx; font-weight: bold; color: %s; }",
-      hfreq_font_size, hfreq_color_hex);
+      "#hfreq_label { font-size: %.0fpx; font-weight: %d; color: rgba(%d, %d, %d, %.2f); }"
+      "#hfreq_b_label { font-size: %.0fpx; font-weight: %d; color: rgba(%d, %d, %d, %.2f); }",
+      hfreq_font_size, hfreq_bold ? 900 : 400, r1, g1, b1, ha,
+      hfreq_b_font_size, hfreq_bold ? 900 : 400, r2, g2, b2, ha);
   gtk_css_provider_load_from_data(hfreq_css, css, -1, NULL);
   gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_label),
       GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  if (hfreq_b_label != NULL) {
+    gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_b_label),
+        GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  }
 }
 
 void hfreq_conf_save(void) {
@@ -106,6 +126,11 @@ void hfreq_conf_save(void) {
   fprintf(f, "size=%g\n", hfreq_font_size);
   fprintf(f, "freq=%s\n", hfreq_color_hex);
   fprintf(f, "tail=%s\n", hfreq_tail_hex);
+  fprintf(f, "bsize=%g\n", hfreq_b_font_size);
+  fprintf(f, "bfreq=%s\n", hfreq_b_color_hex);
+  fprintf(f, "btail=%s\n", hfreq_b_tail_hex);
+  fprintf(f, "bweight=%d\n", hfreq_bold);
+  fprintf(f, "bright=%g\n", hfreq_bright);
   fclose(f);
 }
 
@@ -125,6 +150,20 @@ void hfreq_conf_load(void) {
     } else if (strncmp(line, "tail=", 5) == 0) {
       g_strlcpy(hfreq_tail_hex, line + 5, sizeof(hfreq_tail_hex));
       g_strchomp(hfreq_tail_hex);
+    } else if (strncmp(line, "bsize=", 6) == 0) {
+      double v = atof(line + 6);
+      if (v >= 12.0 && v <= 48.0) hfreq_b_font_size = v;
+    } else if (strncmp(line, "bfreq=", 6) == 0) {
+      g_strlcpy(hfreq_b_color_hex, line + 6, sizeof(hfreq_b_color_hex));
+      g_strchomp(hfreq_b_color_hex);
+    } else if (strncmp(line, "btail=", 6) == 0) {
+      g_strlcpy(hfreq_b_tail_hex, line + 6, sizeof(hfreq_b_tail_hex));
+      g_strchomp(hfreq_b_tail_hex);
+    } else if (strncmp(line, "bweight=", 8) == 0) {
+      hfreq_bold = atoi(line + 8);
+    } else if (strncmp(line, "bright=", 7) == 0) {
+      double v = atof(line + 7);
+      if (v >= 10.0 && v <= 100.0) hfreq_bright = v;
     }
   }
   fclose(f);
@@ -138,6 +177,13 @@ static gboolean hfreq_update_cb(gpointer data) {
     g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"%s\">.%03lld</span>",
                f / 1000000LL, (f / 1000LL) % 1000LL, hfreq_tail_hex, f % 1000LL);
     gtk_label_set_markup(GTK_LABEL(hfreq_label), buf);
+  }
+  /* ZFREQ-B */
+  if (hfreq_b_label != NULL && GTK_IS_WIDGET(hfreq_b_label)) {
+    long long fb = vfo[VFO_B].frequency;
+    g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"%s\">.%03lld</span>",
+               fb / 1000000LL, (fb / 1000LL) % 1000LL, hfreq_b_tail_hex, fb % 1000LL);
+    gtk_label_set_markup(GTK_LABEL(hfreq_b_label), buf);
   }
   return G_SOURCE_CONTINUE;
 }
@@ -355,17 +401,17 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   hfreq_label = gtk_label_new("0.000.000");
   gtk_widget_set_name(hfreq_label, "hfreq_label");
   hfreq_css_apply();
+  hfreq_b_label = gtk_label_new("0.000.000");
+  gtk_widget_set_name(hfreq_b_label, "hfreq_b_label");
+  hfreq_css_apply();
   GtkWidget *hbar = gtk_header_bar_new();
     gtk_widget_set_margin_start(hfreq_label, 19);
   gtk_header_bar_pack_start(GTK_HEADER_BAR(hbar), hfreq_label);
+  /* ZFREQ-B: B ne pack_end — ee podnimet radio.c v levuyu gruppu, srazu posle BAR */
   gtk_header_bar_set_custom_title(GTK_HEADER_BAR(hbar), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
   gtk_header_bar_set_has_subtitle(GTK_HEADER_BAR(hbar), FALSE);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(hbar), TRUE);
-  GtkWidget *hmin = gtk_button_new_from_icon_name("window-minimize-symbolic",
-      GTK_ICON_SIZE_MENU);
-  g_signal_connect_swapped(hmin, "clicked",
-      G_CALLBACK(gtk_window_iconify), top_window);
-  gtk_header_bar_pack_end(GTK_HEADER_BAR(hbar), hmin);
+  /* ZFREQ-B: knopka svorachivaniya ubrana — sleva dubliruet shtatnuyu minus i krestik GTK */
   gtk_window_set_titlebar(GTK_WINDOW(top_window), hbar);
   g_timeout_add(200, hfreq_update_cb, NULL);
   //

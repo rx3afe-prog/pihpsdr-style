@@ -53,6 +53,7 @@ double vfo_status_size_scale = 1.0;
 #include <arpa/inet.h>
 
 #include "actions.h"
+#include "meter.h"   /* ZSBAR */
 #include "agc.h"
 #include "appearance.h"
 #include "band.h"
@@ -939,6 +940,117 @@ void rx_panadapter_update(RECEIVER *rx) {
   // drawn last so it sits on top of trace + grid
   //
   dxcluster_draw_spots(cr, rx->id, frequency, rx->cAp, rx->cBp, mywidth, myheight);
+
+  // ZSBAR v2: S-poloska v pravom verhnem uglu panoramy, S9 za seredinoj
+  if (meter_type == SMETER_BAR) {
+    const double W = (double)rx->width;
+    const double bw = (W > 260.0) ? 240.0 : (W - 20.0);
+    const double x0 = W - bw - 10.0;
+    const double y0 = 12.0;
+    const double bh = 4.5;
+    const double ly = y0 + bh + 9.0;
+    const double gf = 0.65;          /* dolya zelenoj chasti (S1..S9) */
+    const double lo = -127.0;
+    double lvl = meter_bar_rxlvl, pk = meter_bar_pk, lw, x, x9;
+    char zb[8];
+    if (lvl < lo) { lvl = lo; } if (lvl > -13.0) { lvl = -13.0; }
+    if (pk < lo) { pk = lo; } if (pk > -13.0) { pk = -13.0; }
+    /* fon */
+    cairo_set_source_rgba(cr, 0.04, 0.05, 0.08, 0.75);
+    cairo_rectangle(cr, x0 - 6.0, y0 - 2.0, bw + 12.0, bh + 15.0);
+    cairo_fill(cr);
+    /* krasnyij sektor pravee S9 */
+    x9 = x0 + gf * bw;
+    cairo_set_source_rgba(cr, 0.45, 0.08, 0.05, 0.45);
+    cairo_rectangle(cr, x9, y0, x0 + bw - x9, bh);
+    cairo_fill(cr);
+    /* zapolnenie urovnya: kusachno-linejnaya shkala */
+    lw = (lvl <= -73.0) ? gf * bw * (lvl - lo) / (-73.0 - lo)
+                        : gf * bw + (1.0 - gf) * bw * (lvl + 73.0) / 60.0;
+    cairo_pattern_t *g = cairo_pattern_create_linear(x0, 0.0, x0 + bw, 0.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.00, 0.10, 0.85, 0.20, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.64, 0.15, 0.95, 0.30, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.66, 0.95, 0.35, 0.10, 1.0);
+    cairo_pattern_add_color_stop_rgba(g, 1.00, 1.00, 0.10, 0.05, 1.0);
+    cairo_set_source(cr, g);
+    cairo_rectangle(cr, x0, y0, lw, bh);
+    cairo_fill(cr);
+    cairo_pattern_destroy(g);
+    /* pik — svetlaya chyorta */
+    x = (pk <= -73.0) ? x0 + gf * bw * (pk - lo) / (-73.0 - lo)
+                      : x9 + (1.0 - gf) * bw * (pk + 73.0) / 60.0;
+    cairo_set_source_rgba(cr, 1.0, 0.95, 0.85, 0.95);
+    cairo_set_line_width(cr, 1.0);
+    cairo_move_to(cr, x, y0);
+    cairo_line_to(cr, x, y0 + bh);
+    cairo_stroke(cr);
+    /* S1..S9 s chyortochkami kazhdyie 3 dB */
+    cairo_set_source_rgba(cr, 0.85, 0.88, 0.92, 0.95);
+    cairo_set_font_size(cr, 7.0);
+    for (int su = 1; su <= 9; su++) {
+      double db = lo + 6.0 * su;
+      x = x0 + gf * bw * (db - lo) / (-73.0 - lo);
+      cairo_move_to(cr, x, y0 + bh);
+      cairo_line_to(cr, x, y0 + bh + 3.0);
+      cairo_stroke(cr);
+      snprintf(zb, sizeof(zb), "%d", su);
+      cairo_move_to(cr, x - 2.0, ly);
+      cairo_show_text(cr, zb);
+    }
+    /* krasnaya zona: tsifry tolko na +10, +30, +60, mezhdu — chyortochki */
+    for (int ov = 10; ov <= 60; ov += 10) {
+      x = x9 + (1.0 - gf) * bw * ov / 60.0;
+      cairo_move_to(cr, x, y0 + bh);
+      cairo_line_to(cr, x, y0 + bh + 3.0);
+      cairo_stroke(cr);
+      if (ov == 10 || ov == 30 || ov == 60) {
+        snprintf(zb, sizeof(zb), "+%d", ov);
+        cairo_move_to(cr, x - 7.0, ly);
+        cairo_show_text(cr, zb);
+      }
+    }
+  }
+
+
+  // ZVFOSTAT: mode + shirina filtra sleva, chastota sprava (pod S-poloskoy)
+  {
+    double vs = vfo_status_size_scale * scalfac;
+    double va;
+    if (vfo_status_use_custom) {
+      va = vfo_status_color.alpha * vfo_status_brightness;
+      cairo_set_source_rgba(cr, vfo_status_color.red, vfo_status_color.green, vfo_status_color.blue, va);
+    } else {
+      va = vfo_status_brightness;
+      cairo_set_source_rgba(cr, 0.90, 0.90, 0.90, va);
+    }
+    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL,
+        hfreq_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, 12.0 * vs);
+
+    const double bw = ((double)rx->width > 260.0) ? 240.0 : ((double)rx->width - 20.0);
+    const double xs = (double)rx->width - bw - 10.0;
+    const double vy = 46.0;
+
+    int fwidth = (int)(rx->filter_high - rx->filter_low);
+    char fst[48];
+    if (fwidth >= 1000) {
+      snprintf(fst, sizeof(fst), "%s %.1fk", mode_get_long_name(mode), fwidth / 1000.0);
+    } else {
+      snprintf(fst, sizeof(fst), "%s %d Hz", mode_get_long_name(mode), fwidth);
+    }
+    cairo_move_to(cr, xs, vy);
+    cairo_show_text(cr, fst);
+
+    long long zmhz = frequency / 1000000LL;
+    long long zkhz = (frequency % 1000000LL) / 1000LL;
+    long long zhz  = frequency % 1000LL;
+    char fqs[32];
+    snprintf(fqs, sizeof(fqs), "%lld.%03lld.%03lld", zmhz, zkhz, zhz);
+    cairo_text_extents_t ve;
+    cairo_text_extents(cr, fqs, &ve);
+    cairo_move_to(cr, xs + bw - ve.width, vy);
+    cairo_show_text(cr, fqs);
+  }
 
   // ZFREQ: compact frequency readout in the top-left corner
   {
