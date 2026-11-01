@@ -285,7 +285,7 @@ void dxcluster_history_menu(GtkWidget *parent) {
   GtkWidget *export_b = gtk_button_new_with_label("Export CSV");
   GtkWidget *clear_b  = gtk_button_new_with_label("Clear History");
   GtkWidget *tune_b   = gtk_button_new_with_label("Tune Selected");
-  GtkWidget *close_b  = gtk_button_new_with_label("Close");
+  GtkWidget *close_b  = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   gtk_widget_set_name(tune_b, "boldlabel");
   g_signal_connect(export_b, "clicked", G_CALLBACK(on_export_clicked), NULL);
@@ -353,7 +353,7 @@ void dxcluster_history_menu(GtkWidget *parent) {
   struct { const char *title; int col; int width; } cols[] = {
     { "Time (UTC)", COL_TIME,    110 },
     { "Freq (kHz)", COL_FREQ,     90 },
-    { "Mode",       COL_MODE,     60 },
+    { "Режим",       COL_MODE,     60 },
     { "DX",         COL_DXCALL,  100 },
     { "Spotter",    COL_SPOTTER, 100 },
     { "Comment",    COL_COMMENT, 300 },

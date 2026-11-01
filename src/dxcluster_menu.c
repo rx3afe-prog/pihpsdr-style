@@ -302,7 +302,7 @@ void dxcluster_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), w_blacklist, 1, row, 6, 1);
   /* Action buttons */
   apply_btn = gtk_button_new_with_label("Apply&Save");
-  GtkWidget *close_btn = gtk_button_new_with_label("Close");
+  GtkWidget *close_btn = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_btn, "close_button");
   g_signal_connect(apply_btn,  "clicked", G_CALLBACK(on_save_clicked), NULL);
   g_signal_connect(close_btn, "button-press-event", G_CALLBACK(on_close_pressed), NULL);

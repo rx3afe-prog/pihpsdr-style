@@ -158,7 +158,7 @@ void dxcluster_popup_show_single(const DX_SPOT *spot, int parent_x, int parent_y
   gtk_container_add(GTK_CONTAINER(content), grid);
   /* Action buttons */
   GtkWidget *tune_btn  = gtk_button_new_with_label("Tune to spot");
-  GtkWidget *close_btn = gtk_button_new_with_label("Close");
+  GtkWidget *close_btn = gtk_button_new_with_label("Закрыть");
   gtk_dialog_add_action_widget(GTK_DIALOG(dlg), close_btn, GTK_RESPONSE_NONE);
   gtk_dialog_add_action_widget(GTK_DIALOG(dlg), tune_btn,  GTK_RESPONSE_NONE);
   g_signal_connect(tune_btn,  "clicked", G_CALLBACK(on_tune_clicked),  ctx);
@@ -242,7 +242,7 @@ void dxcluster_popup_show_group(const DX_SPOT *spots, int n_spots,
   }
 
   gtk_container_add(GTK_CONTAINER(content), grid);
-  GtkWidget *close_btn = gtk_button_new_with_label("Close");
+  GtkWidget *close_btn = gtk_button_new_with_label("Закрыть");
   gtk_dialog_add_action_widget(GTK_DIALOG(dlg), close_btn, GTK_RESPONSE_CLOSE);
   g_signal_connect_swapped(close_btn, "clicked",
                            G_CALLBACK(gtk_widget_destroy), dlg);

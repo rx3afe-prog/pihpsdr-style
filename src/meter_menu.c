@@ -109,7 +109,7 @@ void meter_menu (GtkWidget *parent) {
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), FALSE);
   gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
@@ -132,6 +132,7 @@ void meter_menu (GtkWidget *parent) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Analog");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "Edgewise");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "DualScale");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(btn), NULL, "RX3AFE");   /* ZSBAR: tonkaya poloska */
   gtk_combo_box_set_active(GTK_COMBO_BOX(btn), meter_type);
   g_signal_connect(btn, "changed", G_CALLBACK(meter_type_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 1, 2, 2, 1);

@@ -63,6 +63,10 @@ typedef struct _meter_ctx {
 static METER_CTX meters[2];
 static const METER_CTX *mc = &meters[0];
 
+/* ZSBAR: tekushchie znacheniya dlya risovaniya v panorame */
+double meter_bar_rxlvl = -200.0;
+double meter_bar_pk = -200.0;
+
 #define METER_WIDTH     (mc->width)
 #define METER_HEIGHT    (mc->height)
 #define ADD_METER_WIDTH (mc->add_width)
@@ -817,6 +821,8 @@ static void txmeter_powerbar(cairo_t *cr, double frac, double pk, const char *pw
 void rxmeter_update(int id, double rxlvl, double peak, double gain, double out) {
   METER_CTX *m = &meters[id];
   mc = m;
+  meter_bar_rxlvl = rxlvl;   /* ZSBAR */
+  meter_bar_pk = peak;       /* ZSBAR */
 
   if (!m->surface) { return; }
 
@@ -1195,6 +1201,87 @@ void rxmeter_update(int id, double rxlvl, double peak, double gain, double out) 
    break;
   case DUALSCALE:
     rxmeter_dualscale(cr, smtr, sval, sval2, m->max_rxlvl, m->pk, ref9, perS);
+    break;
+  case SMETER_BAR: {
+    /* ZSBAR v3: gorizontalnaya poloska S1..S9, krasnyij sektor +10..+60 */
+    const double W = m->width;
+    const double H = m->height;
+    const double by = 2.0;                   /* verh poloski */
+    const double bh = 12.0;                  /* vysota poloskova polotna */
+    const double bx = 1.0;
+    const double bw = W - 2.0;
+    const double ly = by + bh + 9.0;         /* liniya tsifr */
+    const double lo = -127.0, hi = -13.0;
+    const double span = hi - lo;
+    double lvl, pkv, lw, x, x9;
+    /* fon */
+    cairo_set_source_rgba(cr, 0.04, 0.05, 0.08, 1.0);
+    cairo_rectangle(cr, 0, 0, W, H);
+    cairo_fill(cr);
+    /* granitsa S9 */
+    x9 = bx + (-73.0 - lo) / span * bw;
+    /* krasnyij sektor pravee S9 */
+    cairo_set_source_rgba(cr, 0.45, 0.08, 0.05, 0.30);
+    cairo_rectangle(cr, x9, by, bx + bw - x9, bh);
+    cairo_fill(cr);
+    /* zapolnenie urovnya */
+    lvl = m->max_rxlvl;
+    if (lvl < lo) { lvl = lo; }
+    if (lvl > hi) { lvl = hi; }
+    lw = (lvl - lo) / span * bw;
+    cairo_pattern_t *g = cairo_pattern_create_linear(bx, 0.0, bx + bw, 0.0);
+    cairo_pattern_add_color_stop_rgba(g, 0.00, 0.10, 0.85, 0.20, 0.95);
+    cairo_pattern_add_color_stop_rgba(g, 0.36, 0.15, 0.95, 0.30, 0.95);
+    cairo_pattern_add_color_stop_rgba(g, 0.37, 0.95, 0.35, 0.10, 0.95);
+    cairo_pattern_add_color_stop_rgba(g, 1.00, 1.00, 0.10, 0.05, 0.95);
+    cairo_set_source(cr, g);
+    cairo_rectangle(cr, bx, by, lw, bh);
+    cairo_fill(cr);
+    cairo_pattern_destroy(g);
+    /* pik — svetlaya chyerta */
+    pkv = m->pk;
+    if (pkv < lo) { pkv = lo; }
+    if (pkv > hi) { pkv = hi; }
+    x = bx + (pkv - lo) / span * bw;
+    cairo_set_source_rgba(cr, 1.0, 0.95, 0.85, 0.95);
+    cairo_set_line_width(cr, 1.0);
+    cairo_move_to(cr, x, by);
+    cairo_line_to(cr, x, by + bh);
+    cairo_stroke(cr);
+    /* edinitsy S1..S9 */
+    cairo_set_source_rgba(cr, 0.85, 0.88, 0.92, 0.90);
+    cairo_set_font_size(cr, 7.0);
+    for (int sunit = 1; sunit <= 9; sunit++) {
+      double db = -127.0 + 6.0 * sunit;
+      x = bx + (db - lo) / span * bw;
+      cairo_move_to(cr, x, by + bh);
+      cairo_line_to(cr, x, by + bh + 3.0);
+      cairo_stroke(cr);
+      snprintf(sf, sizeof(sf), "%d", sunit);
+      cairo_move_to(cr, x - 2.0, ly);
+      cairo_show_text(cr, sf);
+    }
+    /* melkie chyortochki kazhdyie 3 dB */
+    for (int sunit = 1; sunit < 9; sunit++) {
+      double db = -127.0 + 6.0 * sunit + 3.0;
+      x = bx + (db - lo) / span * bw;
+      cairo_move_to(cr, x, by + bh);
+      cairo_line_to(cr, x, by + bh + 2.0);
+      cairo_stroke(cr);
+    }
+    /* krasnaya zona: metochki +10..+60 kazhdyie 10 dB */
+    cairo_set_source_rgba(cr, 1.0, 0.45, 0.35, 0.95);
+    for (int over = 10; over <= 60; over += 10) {
+      double db = -73.0 + over;
+      x = bx + (db - lo) / span * bw;
+      cairo_move_to(cr, x, by + bh);
+      cairo_line_to(cr, x, by + bh + 3.0);
+      cairo_stroke(cr);
+      snprintf(sf, sizeof(sf), "+%d", over);
+      cairo_move_to(cr, x - 5.0, ly);
+      cairo_show_text(cr, sf);
+    }
+    }
     break;
   }
 

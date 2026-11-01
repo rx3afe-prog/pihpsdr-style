@@ -243,6 +243,9 @@ static int scale_timeout_cb(gpointer data) {
 
 static void show_popup_slider(enum ACTION action, int rx, double min, double max, double delta, double value,
                               const char *what) {
+  /* ZEN-NOPOPUP: всплывающее окно отключено */
+  return;
+
   //
   // general function for displaying a pop-up slider. This can also be used for a value for which there
   // is no GTK slider. Make the slider "insensitive" so one cannot operate on it.
@@ -871,10 +874,51 @@ int sliders_pan(gpointer data) {
   return G_SOURCE_REMOVE;
 }
 
+extern int zen_bar_bottom_y(void);
+
+static GtkWidget *sliders_eye = NULL;
+static int sliders_panel_hidden = 0;
+
+static void sliders_eye_cb(GtkWidget *w, GdkEventButton *e, gpointer data) {
+  (void)w; (void)e; (void)data;
+  sliders_panel_hidden = !sliders_panel_hidden;
+  if (sliders_grid) {
+    if (sliders_panel_hidden) { gtk_widget_hide(sliders_grid); }
+    else { gtk_widget_show_all(sliders_grid); }
+  }
+}
+
+void sliders_dock_top_right(int win_width) {
+  if (!sliders_grid) return;
+  int y_top = zen_bar_bottom_y();
+  if (y_top < 0) { y_top = 4; }
+  GtkRequisition req;
+  gtk_widget_get_preferred_size(sliders_grid, NULL, &req);
+  int gw = req.width;
+  if (gw <= 1) { gw = win_width; }
+  int px = win_width - gw - 6;
+  if (px < 2) { px = 2; }
+  int bx = (px > 28) ? px - 28 : 2;
+  if (!sliders_eye) {
+    sliders_eye = gtk_button_new_with_label("S");
+    gtk_widget_set_name(sliders_eye, "tb-round");
+    gtk_widget_set_size_request(sliders_eye, 24, 24);
+    gtk_widget_set_tooltip_text(sliders_eye, "Показать/скрыть ползунки");
+    g_signal_connect(sliders_eye, "button-press-event", G_CALLBACK(sliders_eye_cb), NULL);
+    gtk_fixed_put(GTK_FIXED(fixed), sliders_eye, bx, y_top);
+  } else {
+    gtk_fixed_move(GTK_FIXED(fixed), sliders_eye, bx, y_top);
+  }
+  gtk_fixed_move(GTK_FIXED(fixed), sliders_grid, px, y_top);
+  gtk_widget_show(sliders_eye);
+  if (sliders_panel_hidden) { gtk_widget_hide(sliders_grid); }
+}
+
 void sliders_show_sliders(int ypos) {
   if (sliders_grid) {
-    gtk_layout_put(GTK_LAYOUT(fixed),  sliders_grid, 0, ypos);
+    gtk_fixed_put(GTK_FIXED(fixed),  sliders_grid, 0, ypos);
     gtk_widget_show_all(sliders_grid);
+    if (sliders_eye) { gtk_widget_hide(sliders_eye); }
     sliders_att_type_changed(NULL);
   }
 }
@@ -884,6 +928,7 @@ void sliders_destroy(void) {
     gtk_widget_destroy(sliders_grid);
     sliders_grid = NULL;
   }
+  if (sliders_eye) { gtk_widget_hide(sliders_eye); }
 
   af_gain_scale = NULL;
   rf_gain_scale = NULL;

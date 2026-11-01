@@ -53,6 +53,10 @@ static void dark_cb(GtkWidget *widget, gpointer data) {
 
 static void theme_combo_cb(GtkWidget *widget, gpointer data) {
   active_theme_index = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  if (active_theme_index >= 0 && active_theme_index < num_themes) {
+    const char *tn = themes[active_theme_index].name;
+    g_strlcpy(active_theme_name, tn, 64);
+  }
   theme_set();
 }
 
@@ -79,7 +83,7 @@ void theme_menu(GtkWidget *parent) {
   gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
   int row = 0;
   // ── Close button ──────────────────────────────────────────────────────────
-  w = gtk_button_new_with_label("Close");
+  w = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(w, "close_button");
   g_signal_connect(w, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), w, 0, row, 1, 1);

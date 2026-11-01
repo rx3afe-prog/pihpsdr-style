@@ -1,0 +1,398 @@
+/* Copyright (C)
+* 2017 - John Melton, G0ORX/N6LYT
+* 2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+#ifndef _RECEIVER_H_
+#define _RECEIVER_H_
+
+#include <gtk/gtk.h>
+#ifdef PORTAUDIO
+  #include <portaudio.h>
+#endif
+#ifdef ALSA
+  #include <alsa/asoundlib.h>
+#endif
+#ifdef PULSEAUDIO
+  #include <pulse/pulseaudio.h>
+  #include <pulse/simple.h>
+#endif
+
+// The frames and gaps are only used on large screens (see radio.c)
+extern int frames_active(void);
+#define FRAMES_MIN_WIDTH  1888
+#define FRAMES_MIN_HEIGHT 980
+
+// Space (pixels) around the displays of one receiver, used for the frame and the gap
+#define RX_FRAME_PAD 4
+#define RX_FRAME_LINE_WIDTH 2.0
+// The displays sit just inside the frame line, so that it does not cut off the top of the frequency scale
+#define RX_DISPLAY_INSET (frames_active() ? RX_FRAME_PAD + 2 + 1 : 0)
+#define RX_FRAME_ACTIVE_COLOUR   0.0, 1.0, 0.0
+#define RX_FRAME_INACTIVE_COLOUR 0.53, 0.81, 0.98
+// Space at both ends of the VFO bar, so that the frame is not covered by meters or text
+#define VFO_SIDE_INSET (frames_active() ? 10 : 0)
+#define VFO_FRAME_COLOUR         1.0, 0.0, 0.0
+
+enum _audio_channel_enum {
+  STEREO = 0,
+  LEFT,
+  RIGHT
+};
+
+typedef struct _receiver {
+  int id;
+  GMutex mutex;
+  GMutex display_mutex;
+
+  int adc;
+
+  double volume;  // in dB
+
+  int dsp_size;
+  int buffer_size;
+  int fft_size;
+  int low_latency;
+
+  int agc;
+  double agc_gain;
+  double agc_slope;
+  double agc_hang_threshold;
+  double agc_hang;
+  double agc_thresh;
+  int fps;
+  int displaying;
+  int sample_rate;
+  int pixels;
+  int samples;
+  int output_samples;
+  double *iq_input_buffer;
+  double *audio_output_buffer;
+  float *pixel_samples;
+  int display_panadapter;
+  int display_waterfall;
+  guint update_timer_id;
+  int    smetermode;
+  double rxlvl;
+  double curragc;
+  double currout;
+
+  //
+  // Encodings for "QRM fighters"
+  //
+  // nr = 0:         No noise reduction
+  // nr = 1:         Variable-Leak LMS Algorithm, "NR", "ANR"
+  // nr = 2:         Spectral Noise Reduction, "NR2", "AEMNR"
+  // nr = 3:         non-standard extension to WDSP
+  // nr = 4:         non-standard extension to WDSP
+  //
+  // nb = 0:         No noise blanker
+  // nb = 1:         Preemptive Wideband Blanker, "NB", "ANB"
+  // nb = 2:         Interpolating Wideband Blanker, "NB2", "NOB"
+  //
+  // anf= 0/1:       Automatic notch filter off/on
+  // snb= 0/1:       Spectral noise blanker off/on
+  //
+  int nb;
+  int nr;
+  int snb;
+  int anf;
+  int anf_taps;      // Number of FIR Taps in ANF (64)
+  int anf_delay;     // ANF delay samples (16)
+  double anf_gain;   // ANF gain (0.0001)
+  double anf_leakage;
+
+  //
+  // NR/NR2/ANF: position
+  // 0: execute NR/NR2/ANF before AGC
+  // 1: execute NR/NR2/ANF after AGC
+  //
+  int nr_agc;
+
+  //
+  // Noise reduction parameters for "NR2"
+  // To be modified in the DSP menu.
+  //
+  //  Gain method: 0=GaussianSpeechLin, 1=GaussianSpeechLog, 2=GammaSpeech
+  //  NPE  method: 0=OSMS, 1=MMSE
+  //  AE         : Artifact elimination filter on(1)/off(0)
+  //
+  int nr2_gain_method;
+  int nr2_npe_method;
+  double nr2_trained_threshold;
+  double nr2_trained_t2;
+  int nr2_post; // post-NR2 corrections on/off
+  int nr2_post_nlevel;
+  int nr2_post_factor;
+  int nr2_post_rate;
+  int nr2_post_taper;
+  // --- new feature fields ---
+  int    nbp_window;         // Bandpass window: 0=4-term BH 1=7-term BH
+  int agc_custom_attack;  // ms
+  int agc_custom_decay;   // ms
+  int agc_custom_hang;    // ms
+  int agc_custom_slope;   // *10 for WDSP
+
+  //
+  // Noise blanker parameters. These parameters have
+  // similar meanings for NB/NB2 so we only take one set.
+  // To be modified in the DSP menu. Note the "times"
+  // are stored internally in seconds, while in the DSP menu they
+  // are specified in milli-seconds.
+  // The "NB value" nb_thresh, as obtained from the DSP menu,
+  // is multiplied with 0.165 merely since this is done in other
+  // SDR programs as well.
+  // The comments indicate the names of the parameters in the Thetis menu
+  // as well as the internal name used in Thetis.
+  //
+  double nb_tau;       // "Slew",                         NBTransision
+  double nb_advtime;   // "Lead",                         NBLead
+  double nb_hang;      // "Lag",                          NBLag
+  double nb_thresh;    // "Threshold",                    NBThreshold
+  int    nb2_mode;     // NB mode, only NB2
+  //
+  // nb2_mode = 0:  zero mode
+  // nb2_mode = 1:  sample-hold
+  // nb2_mode = 2:  mean-hold
+  // nb2_mode = 3:  hold-sample
+  // nb2_mode = 4:  interpolate
+
+  //
+  // NR4 parameters.
+  //
+  double nr4_reduction_amount;
+  double nr4_smoothing_factor;
+  double nr4_whitening_factor;
+  double nr4_noise_rescale;
+  double nr4_post_threshold;
+  int    nr4_noise_scaling_type;
+
+  //
+  // Manual Multi Notch Filter
+  // The "minimum" width is 200 Hz for an RX filter with 2048 taps
+  // (which is the default), and becomes smaller/larger if the filter
+  // tap size is increased/decreased
+  //
+  double notch_min_width;
+  int multi_notch_enable[3];
+  double multi_notch_center[3];
+  double multi_notch_width[3];
+
+  int filter_low;
+  int filter_high;
+  int sam_sb_mode;   // SAM sidebands: 0=both 1=LSB 2=USB
+  int fm_limiter;    // FM volume limiter on/off
+  double fm_limiter_gain; // FM limiter gain (0-30)
+
+  int width;
+  int height;
+  int afft_size;  // FFT size of the display analyzer
+
+  GtkWidget *panel;
+  GtkWidget *panadapter;
+  GtkWidget *waterfall;
+
+  int panadapter_low;
+  int panadapter_high;
+  int panadapter_step;
+  int panadapter_peaks_on;
+  int panadapter_num_peaks;
+  int panadapter_ignore_range_divider;
+  int panadapter_ignore_noise_percentile;
+  int panadapter_hide_noise_filled;
+  int panadapter_peaks_in_passband_filled;
+
+  int waterfall_low;
+  int waterfall_high;
+  int waterfall_automatic;
+  int waterfall_percent;
+  cairo_surface_t *panadapter_surface;
+  GdkPixbuf *pixbuf;
+  int mute_when_not_active;
+
+  //
+  // Everything related to audio
+  //
+  int audio_channel;                 // STEREO or LEFT or RIGHT
+  int local_audio;                   // RX audio to sound card is active
+  int local_audio_channels;          // 1 or 2, indicates mono or stereo.
+  char audio_name[128];              // name of currently used sound card
+  GMutex audio_mutex;                // Mutex that can be used for soundcard output
+  double *audio_buffer;              // Buffer that can be used for soundcard output
+  int audio_buffer_offset;           // pointer for audio buffer
+  volatile int audio_buffer_inpt;    // pointer for audio buffer
+  volatile int audio_buffer_outpt;   // pointer for audio_buffer
+
+#if defined(PORTAUDIO) && defined(PULSEAUDIO) && defined(ALSA)
+  // this is only possible for "cppcheck" runs
+  // declare all data without conflicts
+  void *audio_handle;
+  snd_pcm_format_t audio_format;
+  int latency;
+#endif
+#if defined(PORTAUDIO) && !defined(PULSEAUDIO) && !defined(ALSA)
+  PaStream *audio_handle;
+#endif
+#if !defined(PORTAUDIO) && !defined(PULSEAUDIO) && defined(ALSA)
+  snd_pcm_t *audio_handle;
+  snd_pcm_format_t audio_format;
+#endif
+#if !defined(PORTAUDIO) && defined(PULSEAUDIO) && !defined(ALSA)
+  pa_simple *audio_handle;
+  pa_usec_t latency;
+#endif
+
+  int cwaudio;   // detect RX/TX transitions in CW
+  int cwcount;   // for sample insertion and deletion
+  int skipcnt;   // for latency management
+
+  int squelch_enable;
+  double squelch;
+
+  int binaural;
+
+  int deviation;
+
+  long long waterfall_frequency;
+  double waterfall_cBp;
+  double waterfall_cB;
+
+  int mute_radio;
+
+  void *resampler;
+  double *resample_input;
+  double *resample_output;
+  int resample_count;
+  int resample_buffer_size;
+
+  int zoom;
+  int pan;  // 0 (max.left)  ... 100 (max.right)
+  //
+  // We need two functions that depend on the panadapter width (in pixels),
+  // the zoom/pan values, and the sample rate, namly
+  // (x: pixel, f: frequency, v: center frequency), and these are given
+  // by two constants A and B
+  //
+  // f = v + A + B x
+  // x = A' (f-v) + B', with   // A' = 1/B and B' = -A/B
+  //
+  // and these coefficients can then be used to quickly calculate a pixel number from
+  // a frequency, or a frequency from a pixel number. Note the center frequency equals
+  // the vfo.frequency in most modes but is offset by the side tone freq in CWU/CWL.
+  //
+  double cA;
+  double cB;
+  double cAp;
+  double cBp;
+  //
+  // After changing the Zoom/Pan value, it takes a little time before the
+  // first spectrum is available. If no RX panadapter screen update occurs
+  // during this time, the frequency labels are also not drawn but one
+  // really wants to see them moving when moving the PAN slider. Therefore
+  // we record analyzer changes so we can take care then panadapter is
+  // drawn (without a spectrum) once after the analyzer changes.
+  int analyzer_initializing;
+  int pixels_available;
+
+  int x;
+  int y;
+
+  // two variables that implement the new
+  // "mute first RX IQ samples after TX/RX transition"
+  // feature that is relevant for HermesLite-II and STEMlab
+  // (and possibly some other radios)
+  //
+  int txrxcount;
+  int txrxmax;
+
+  int display_gradient;
+  int display_filled;
+  int display_detector_mode;
+  int display_average_mode;
+  double display_average_time;
+
+  //
+  // Equaliser data
+  //
+  int  eq_enable;
+  double eq_freq[11];
+  double eq_gain[11];
+
+} RECEIVER;
+
+extern RECEIVER *rx_create_pure_signal_receiver(int id, int sample_rate, int pixels, int fps);
+extern RECEIVER *rx_create_receiver(int id, int width, int height);
+
+extern gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from);
+extern gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from);
+extern gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpointer data, int from);
+extern gboolean rx_scroll_event(GtkWidget *widget, const GdkEventScroll *event, gpointer data, int from);
+
+extern void   rx_add_iq_samples(RECEIVER *rx, double i_sample, double q_sample);
+extern void   rx_add_div_iq_samples(RECEIVER *rx, double i0, double q0, double i1, double q1);
+
+extern void   rx_change_sample_rate(RECEIVER *rx, int sample_rate);
+extern void   rx_change_adc(const RECEIVER *rx);
+extern void   rx_close(const RECEIVER *rx);
+extern void   rx_create_analyzer(RECEIVER *rx);
+extern void   rx_filter_changed(RECEIVER *rx);
+extern void   rx_get_pixels(RECEIVER *rx);
+extern void   rx_get_meter(RECEIVER *rx);
+extern void   rx_frequency_changed(const RECEIVER *rx);
+extern void   rx_mode_changed(RECEIVER *rx);
+extern void   rx_off(const RECEIVER *rx, int wait);
+extern void   rx_on(const RECEIVER *rx);
+extern void   rx_reconfigure(RECEIVER *rx, int height);
+extern void   rx_redraw_panels(void);
+extern void   draw_rounded_frame(GtkWidget *widget, cairo_t *cr, double red, double green, double blue);
+extern void   rx_restore_state(RECEIVER *rx);
+extern void   rx_save_state(const RECEIVER *rx);
+extern void   rx_capture_start(const RECEIVER *rx);
+extern void   rx_capture_end(const RECEIVER *rx);
+
+extern void   rx_set_active(RECEIVER *rx);
+extern int    rx_has_meter(const RECEIVER *rx);
+extern void   rx_set_af_binaural(const RECEIVER *rx);
+extern void   rx_set_af_gain(const RECEIVER *rx);
+extern void   rx_set_agc(RECEIVER *rx);
+extern void   rx_set_analyzer(RECEIVER *rx);
+extern void   rx_set_average(const RECEIVER *rx);
+extern void   rx_set_bandpass(const RECEIVER *rx);
+extern void   rx_set_cw_peak(const RECEIVER *rx, int state, double freq);
+extern void   rx_set_detector(const RECEIVER *rx);
+extern void   rx_set_deviation(const RECEIVER *rx);
+extern void   rx_set_sam_mode(const RECEIVER *rx);
+extern void   rx_set_displaying(RECEIVER *rx);
+extern void   rx_set_equalizer(RECEIVER *rx);
+extern void   rx_set_fm_limiter(const RECEIVER *rx);
+extern void   rx_set_fft_params(RECEIVER *rx);
+extern void   rx_set_filter(RECEIVER *rx);
+extern void   rx_set_framerate(RECEIVER *rx);
+extern void   rx_set_frequency(const RECEIVER *rx, long long frequency);
+extern void   rx_set_mode(const RECEIVER* rx);
+extern void   rx_set_noise(const RECEIVER *rx);
+extern void   rx_set_notch(const RECEIVER *rx);
+extern void   rx_set_offset(const RECEIVER *rx);
+extern void   rx_set_squelch(const RECEIVER *rx);
+
+extern void   rx_vfo_changed(RECEIVER *rx);
+extern void   rx_update_zoom(RECEIVER *rx);
+extern void   rx_update_width(RECEIVER *rx);
+extern void   rx_update_pan(RECEIVER *rx);
+
+extern void rx_create_remote(RECEIVER *rx);
+
+#endif

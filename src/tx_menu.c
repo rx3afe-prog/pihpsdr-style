@@ -559,7 +559,7 @@ void tx_menu(GtkWidget *parent) {
     have_mic = 1;
   }
 
-  btn = gtk_button_new_with_label("Close");
+  btn = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);

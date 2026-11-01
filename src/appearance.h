@@ -34,8 +34,8 @@
 // thin and thick line widths in the panadapers
 // "thick" and "extra" also used in the analog meter
 //
-#define PAN_LINE_THIN  0.5
-#define PAN_LINE_THICK 1.0
+#define PAN_LINE_THIN  1.0
+#define PAN_LINE_THICK 2.0
 #define PAN_LINE_EXTRA 2.0  // used for really important things such as band edges, and the analog meter needle.
 
 //

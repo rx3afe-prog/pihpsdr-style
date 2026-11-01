@@ -68,6 +68,7 @@
 #include "store_menu.h"
 #include "switch_menu.h"
 #include "theme_menu.h"
+#include "text_menu.h"
 #include "toolbar_menu.h"
 #include "tx_menu.h"
 #include "xvtr_menu.h"
@@ -149,6 +150,12 @@ static gboolean minimize_cb(GtkWidget *widget, GdkEventButton *event, gpointer d
 }
 
 // cppcheck-suppress constParameterCallback
+static gboolean text_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
+  cleanup();
+  text_menu(top_window);
+  return TRUE;
+}
+
 static gboolean theme_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
   cleanup();
   theme_menu(top_window);
@@ -582,24 +589,24 @@ void new_menu(void) {
     //
     // First row is reserved for Close/About/Iconify/Restart/Exit
     //
-    btn = gtk_button_new_with_label("Close");
+    btn = gtk_button_new_with_label("Закрыть");
     gtk_widget_set_name(btn, "close_button");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);
     //
-    btn = gtk_button_new_with_label("About");
+    btn = gtk_button_new_with_label("О программе");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(about_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, 3, 0, 1, 1);
     //
-    btn = gtk_button_new_with_label("Icon");
+    btn = gtk_button_new_with_label("Значок");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(minimize_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, 4, 0, 1, 1);
     //
-    btn = gtk_button_new_with_label("Restart");
+    btn = gtk_button_new_with_label("Перезапуск");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(restart_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, 5, 0, 1, 1);
     //
-    btn = gtk_button_new_with_label("Exit");
+    btn = gtk_button_new_with_label("Выход");
     gtk_widget_set_name(btn, "close_button");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(exit_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, 6, 0, 1, 1);
@@ -615,7 +622,7 @@ void new_menu(void) {
     // Special menu:
     // Cat, Server, DX, Spots
     //
-    btn = gtk_button_new_with_label("Screen");
+    btn = gtk_button_new_with_label("Экран");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(screen_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
@@ -626,7 +633,7 @@ void new_menu(void) {
     row++;
 
     if (!radio_is_remote) {
-      btn = gtk_button_new_with_label("Server");
+      btn = gtk_button_new_with_label("Сервер");
       g_signal_connect (btn, "button-press-event", G_CALLBACK(server_cb), NULL);
       gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
       row++;
@@ -636,7 +643,7 @@ void new_menu(void) {
     g_signal_connect (btn, "button-press-event", G_CALLBACK(dxcluster_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
-    btn = gtk_button_new_with_label("Spots");
+    btn = gtk_button_new_with_label("Споты");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(dxspots_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row = 2;
@@ -645,27 +652,32 @@ void new_menu(void) {
     // Menus related to the Radio in general:
     //  Radio/Theme/Display/Meter/Xvtr
     //
-    btn = gtk_button_new_with_label("Radio");
+    btn = gtk_button_new_with_label("Радио");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(radio_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Theme");
+    btn = gtk_button_new_with_label("Тема");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(theme_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Display");
+    btn = gtk_button_new_with_label("Текст");
+    g_signal_connect (btn, "button-press-event", G_CALLBACK(text_cb), NULL);
+    gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
+    row++;
+    //
+    btn = gtk_button_new_with_label("Дисплей");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(display_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Meter");
+    btn = gtk_button_new_with_label("Измеритель");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(meter_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("XVTR");
+    btn = gtk_button_new_with_label("Трансвертер");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(xvtr_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row = 2;
@@ -679,17 +691,17 @@ void new_menu(void) {
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Band");
+    btn = gtk_button_new_with_label("Диапазон");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(band_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("BdStack");
+    btn = gtk_button_new_with_label("Ячейка");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(bstk_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Mode");
+    btn = gtk_button_new_with_label("Режим");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(mode_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
@@ -708,12 +720,12 @@ void new_menu(void) {
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Filter");
+    btn = gtk_button_new_with_label("Фильтр");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(filter_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Noise");
+    btn = gtk_button_new_with_label("Шум");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(noise_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
@@ -781,7 +793,7 @@ void new_menu(void) {
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
     //
-    btn = gtk_button_new_with_label("Profile");
+    btn = gtk_button_new_with_label("Профиль");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(profile_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
@@ -803,7 +815,7 @@ void new_menu(void) {
     // Menus for controlling piHPSDR
     // Toolbar, Sliders, MIDI, Encoders, Switches
     //
-    btn = gtk_button_new_with_label("Toolbar");
+    btn = gtk_button_new_with_label("Панель");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(toolbar_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;
@@ -852,7 +864,7 @@ void new_menu(void) {
     // VFO panel layout and band plan). Attached at the running (col,row) so it
     // lands in the next free cell of the last column, whatever the build.
     //
-    btn = gtk_button_new_with_label("Reload");
+    btn = gtk_button_new_with_label("Обновить");
     g_signal_connect (btn, "button-press-event", G_CALLBACK(reload_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
     row++;

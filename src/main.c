@@ -70,6 +70,124 @@ static GdkCursor *cursor_arrow;
 static GdkCursor *cursor_watch;
 
 GtkWidget *top_window = NULL;
+//
+// ZFREQ: digital scale in the title bar
+//
+static GtkWidget *hfreq_label = NULL;
+//
+// ZFREQ-B: frequency of VFO B in the title bar, right side
+//
+GtkWidget *hfreq_b_label = NULL;  /* ZFREQ-B: ne static — pakuetsya iz radio.c ryadom s BAR */
+double hfreq_b_font_size = 22.0;
+char hfreq_b_color_hex[16] = "#e07810";
+char hfreq_b_tail_hex[16] = "#e07810";
+int hfreq_bold = 1;             /* ZFREQ-B: galochka Tolstyi shrift */
+double hfreq_bright = 100.0;    /* ZFREQ-B: yarkost shkaly, % */
+//
+// HEADERCFG: tunable header scale appearance
+//
+double hfreq_font_size = 22.0;
+char hfreq_color_hex[16] = "#e01010";
+char hfreq_tail_hex[16] = "#006400";
+
+static GtkCssProvider *hfreq_css = NULL;
+
+void hfreq_css_apply(void) {
+  char css[512];
+  int r1, g1, b1, r2, g2, b2;
+  double ha;
+  if (hfreq_label == NULL) return;
+  if (hfreq_css != NULL) {
+    gtk_style_context_remove_provider(gtk_widget_get_style_context(hfreq_label),
+        GTK_STYLE_PROVIDER(hfreq_css));
+    g_object_unref(hfreq_css);
+  }
+  hfreq_css = gtk_css_provider_new();
+  sscanf(hfreq_color_hex, "#%02x%02x%02x", &r1, &g1, &b1);
+  sscanf(hfreq_b_color_hex, "#%02x%02x%02x", &r2, &g2, &b2);
+  ha = hfreq_bright / 100.0;
+  g_snprintf(css, sizeof(css),
+      "#hfreq_label { font-size: %.0fpx; font-weight: %d; color: rgba(%d, %d, %d, %.2f); }"
+      "#hfreq_b_label { font-size: %.0fpx; font-weight: %d; color: rgba(%d, %d, %d, %.2f); }",
+      hfreq_font_size, hfreq_bold ? 900 : 400, r1, g1, b1, ha,
+      hfreq_b_font_size, hfreq_bold ? 900 : 400, r2, g2, b2, ha);
+  gtk_css_provider_load_from_data(hfreq_css, css, -1, NULL);
+  gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_label),
+      GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  if (hfreq_b_label != NULL) {
+    gtk_style_context_add_provider(gtk_widget_get_style_context(hfreq_b_label),
+        GTK_STYLE_PROVIDER(hfreq_css), GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  }
+}
+
+void hfreq_conf_save(void) {
+  FILE *f = fopen("header_style.props", "w");
+  if (f == NULL) return;
+  fprintf(f, "size=%g\n", hfreq_font_size);
+  fprintf(f, "freq=%s\n", hfreq_color_hex);
+  fprintf(f, "tail=%s\n", hfreq_tail_hex);
+  fprintf(f, "bsize=%g\n", hfreq_b_font_size);
+  fprintf(f, "bfreq=%s\n", hfreq_b_color_hex);
+  fprintf(f, "btail=%s\n", hfreq_b_tail_hex);
+  fprintf(f, "bweight=%d\n", hfreq_bold);
+  fprintf(f, "bright=%g\n", hfreq_bright);
+  fclose(f);
+}
+
+extern void pan_text_load_conf(void);
+
+void hfreq_conf_load(void) {
+  char line[128];
+  FILE *f = fopen("header_style.props", "r");
+  if (f == NULL) return;
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (strncmp(line, "size=", 5) == 0) {
+      double v = atof(line + 5);
+      if (v >= 12.0 && v <= 48.0) hfreq_font_size = v;
+    } else if (strncmp(line, "freq=", 5) == 0) {
+      g_strlcpy(hfreq_color_hex, line + 5, sizeof(hfreq_color_hex));
+      g_strchomp(hfreq_color_hex);
+    } else if (strncmp(line, "tail=", 5) == 0) {
+      g_strlcpy(hfreq_tail_hex, line + 5, sizeof(hfreq_tail_hex));
+      g_strchomp(hfreq_tail_hex);
+    } else if (strncmp(line, "bsize=", 6) == 0) {
+      double v = atof(line + 6);
+      if (v >= 12.0 && v <= 48.0) hfreq_b_font_size = v;
+    } else if (strncmp(line, "bfreq=", 6) == 0) {
+      g_strlcpy(hfreq_b_color_hex, line + 6, sizeof(hfreq_b_color_hex));
+      g_strchomp(hfreq_b_color_hex);
+    } else if (strncmp(line, "btail=", 6) == 0) {
+      g_strlcpy(hfreq_b_tail_hex, line + 6, sizeof(hfreq_b_tail_hex));
+      g_strchomp(hfreq_b_tail_hex);
+    } else if (strncmp(line, "bweight=", 8) == 0) {
+      hfreq_bold = atoi(line + 8);
+    } else if (strncmp(line, "bright=", 7) == 0) {
+      double v = atof(line + 7);
+      if (v >= 10.0 && v <= 100.0) hfreq_bright = v;
+    }
+  }
+  fclose(f);
+}
+
+
+static gboolean hfreq_update_cb(gpointer data) {
+  char buf[64];
+  if (hfreq_label != NULL && GTK_IS_WIDGET(hfreq_label)) {
+    long long f = vfo[VFO_A].frequency;
+    g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"%s\">.%03lld</span>",
+               f / 1000000LL, (f / 1000LL) % 1000LL, hfreq_tail_hex, f % 1000LL);
+    gtk_label_set_markup(GTK_LABEL(hfreq_label), buf);
+  }
+  /* ZFREQ-B */
+  if (hfreq_b_label != NULL && GTK_IS_WIDGET(hfreq_b_label)) {
+    long long fb = vfo[VFO_B].frequency;
+    g_snprintf(buf, sizeof(buf), "%lld.%03lld<span foreground=\"%s\">.%03lld</span>",
+               fb / 1000000LL, (fb / 1000LL) % 1000LL, hfreq_b_tail_hex, fb % 1000LL);
+    gtk_label_set_markup(GTK_LABEL(hfreq_b_label), buf);
+  }
+  return G_SOURCE_CONTINUE;
+}
+
 GtkWidget *topgrid;
 gulong keypress_signal_id = 0;
 
@@ -108,94 +226,14 @@ static void* wisdom_thread(void *arg) {
 }
 
 // cppcheck-suppress constParameterCallback
-//
-// ZGEOM: zapominanie i vosstanovlenie razmera okna
-//
-static guint zen_geom_cfg_timer = 0;
-static guint zen_geom_settle_timer = 0;
-static int zen_cfg_w = 0, zen_cfg_h = 0;
-static int zen_prog_resize = 0;   // ZGEOM: programmnaya perestroyka — echo ignoriruem
-static int zen_req_w = 0, zen_req_h = 0;
-static int zen_pad_w = 52, zen_pad_h = 81;  // ZGEOM: nakladka ramki (utochnyaetsya)
+static int zen_geom_w = 0, zen_geom_h = 0, zen_geom_x = 0, zen_geom_y = 0;
 
-#define ZGEOM_DIFF(a,b) ((a)>(b)?(a)-(b):(b)-(a))
-
-static gboolean zen_geom_settle_cb(gpointer data) {
+int zen_geom_reapply(gpointer data) {  // ZGEOMFIX: не static — зовётся из radio.c после построения
   (void)data;
-  zen_geom_settle_timer = 0;
-  if (radio != NULL) {  // ZGEOMFIX: zamery tolko posle zapuska radio
-    if (zen_req_w > 200 && zen_cfg_w > zen_req_w && zen_cfg_w - zen_req_w < 300) {
-      zen_pad_w = zen_cfg_w - zen_req_w;
-    }
-    if (zen_req_h > 100 && zen_cfg_h > zen_req_h && zen_cfg_h - zen_req_h < 300) {
-      zen_pad_h = zen_cfg_h - zen_req_h;
-    }
-  }
-  zen_prog_resize = 0;
-  if (GTK_IS_WINDOW(top_window)) {
-    gtk_window_set_geometry_hints(GTK_WINDOW(top_window), NULL, NULL, 0);  // ZGEOMFIX: snyat minimalku
-    gtk_widget_set_size_request(GTK_WIDGET(top_window), 200, 100);         // ZGEOMFIX: mozhno styagivat
-  }
-  t_print("ZGEOM: settle cfg=%dx%d req=%dx%d pad=%dx%d\n", zen_cfg_w, zen_cfg_h, zen_req_w, zen_req_h, zen_pad_w, zen_pad_h);
-  return G_SOURCE_REMOVE;
-}
-
-static void zen_geom_apply(int w, int h) {
-  display_size = 1;  // ZGEOM: Custom
-  display_width[1] = w;
-  display_height[1] = h;
-  if (GTK_IS_WINDOW(top_window)) gtk_window_set_resizable(GTK_WINDOW(top_window), TRUE);
-  gtk_window_unfullscreen(GTK_WINDOW(top_window));
-  gtk_window_set_keep_above(GTK_WINDOW(top_window), FALSE);  // ZGEOM: rastyazhka myshkoy
-  zen_req_w = w;
-  zen_req_h = h;
-  zen_prog_resize = 1;
-  if (zen_geom_settle_timer) g_source_remove(zen_geom_settle_timer);
-  if (radio != NULL) radio_reconfigure_screen();
-  zen_geom_settle_timer = g_timeout_add(800, zen_geom_settle_cb, NULL);
-  t_print("ZGEOM: apply -> %dx%d\n", w, h);
-}
-
-static gboolean zen_geom_sync_cb(gpointer data) {
-  (void)data;
-  zen_geom_cfg_timer = 0;
-  if (zen_prog_resize || radio == NULL) return G_SOURCE_REMOVE;  // ZGEOMFIX: bez petli i bez stareta
-  int w = zen_cfg_w - zen_pad_w;
-  int h = zen_cfg_h - zen_pad_h;
-  if (w > 200 && h > 100 &&
-      (ZGEOM_DIFF(w, display_width[1]) > 5 || ZGEOM_DIFF(h, display_height[1]) > 5)) {
-    zen_geom_apply(w, h);
-  }
-  return G_SOURCE_REMOVE;
-}
-
-static gboolean zen_geom_on_configure(GtkWidget *widget, GdkEventConfigure *event, gpointer data) {
-  (void)widget; (void)data;
-  zen_cfg_w = event->width;
-  zen_cfg_h = event->height;
-  if (zen_prog_resize) {
-    if (zen_geom_settle_timer) g_source_remove(zen_geom_settle_timer);
-    zen_geom_settle_timer = g_timeout_add(800, zen_geom_settle_cb, NULL);
-  } else {
-    if (zen_geom_cfg_timer) g_source_remove(zen_geom_cfg_timer);
-    zen_geom_cfg_timer = g_timeout_add(500, zen_geom_sync_cb, NULL);
-  }
-  return FALSE;
-}
-
-int zen_geom_reapply(gpointer data) {
-  (void)data;
-  char path[512];
-  snprintf(path, sizeof(path), "%s/.pihpsdr_window_geom", g_get_home_dir());
-  FILE *f = fopen(path, "r");
-  if (f) {
-    int w=0, h=0, x=0, y=0;
-    if (fscanf(f, "%d %d %d %d", &w, &h, &x, &y) == 4 && w > 200 && h > 100 && GTK_IS_WINDOW(top_window)) {
-      zen_geom_apply(w, h);
-      gtk_window_move(GTK_WINDOW(top_window), x, y);
-      t_print("ZGEOM: reapply %dx%d at %d,%d\n", w, h, x, y);
-    }
-    fclose(f);
+  if (zen_geom_w > 200) {
+    gtk_window_resize(GTK_WINDOW(top_window), zen_geom_w, zen_geom_h);
+    gtk_window_move(GTK_WINDOW(top_window), zen_geom_x, zen_geom_y);
+    zen_geom_w = 0;
   }
   return G_SOURCE_REMOVE;
 }
@@ -205,13 +243,25 @@ static void zen_geom_load(void) {
   snprintf(path, sizeof(path), "%s/.pihpsdr_window_geom", g_get_home_dir());
   FILE *f = fopen(path, "r");
   if (!f) return;
-  int w=0, h=0, x=0, y=0;
-  if (fscanf(f, "%d %d %d %d", &w, &h, &x, &y) == 4 && w > 200 && h > 100) {
-    gtk_window_move(GTK_WINDOW(top_window), x, y);
-    t_print("ZGEOM: load %dx%d at %d,%d\n", w, h, x, y);
-    g_timeout_add(2500, zen_geom_reapply, NULL);
+  if (fscanf(f, "%d %d %d %d", &zen_geom_w, &zen_geom_h, &zen_geom_x, &zen_geom_y) != 4) {
+    fclose(f); return;
   }
   fclose(f);
+  t_print("ZGEOM: load %dx%d at %d,%d\n", zen_geom_w, zen_geom_h, zen_geom_x, zen_geom_y);
+  if (zen_geom_w > 200 && zen_geom_h > 100) {
+    // ZGEOMFIX: держим окно в пределах экрана, чтобы WSLg
+    // не разбрасывал его по краям при запуске
+    int scr_w = gdk_screen_width();
+    int scr_h = gdk_screen_height();
+    if (zen_geom_x < 10) zen_geom_x = 10;
+    if (zen_geom_y < 10) zen_geom_y = 10;
+    if (zen_geom_x + zen_geom_w > scr_w - 10) zen_geom_x = scr_w - zen_geom_w - 10;
+    if (zen_geom_y + zen_geom_h > scr_h - 10) zen_geom_y = scr_h - zen_geom_h - 10;
+    t_print("ZGEOM: clamped to %d,%d\n", zen_geom_x, zen_geom_y);
+    gtk_window_resize(GTK_WINDOW(top_window), zen_geom_w, zen_geom_h);
+    gtk_window_move(GTK_WINDOW(top_window), zen_geom_x, zen_geom_y);
+    g_timeout_add(2500, zen_geom_reapply, NULL);
+  }
 }
 
 void zen_geom_save(void) {
@@ -222,19 +272,25 @@ void zen_geom_save(void) {
   int w = 0, h = 0, x = 0, y = 0;
   gtk_window_get_size(GTK_WINDOW(top_window), &w, &h);
   gtk_window_get_position(GTK_WINDOW(top_window), &x, &y);
-  w -= zen_pad_w;  // ZGEOM: hranim razmer kontenta
-  h -= zen_pad_h;
   if (w < 200 || h < 100) return;
   snprintf(path, sizeof(path), "%s/.pihpsdr_window_geom", g_get_home_dir());
   FILE *f = fopen(path, "w");
   if (!f) return;
   fprintf(f, "%d %d %d %d\n", w, h, x, y);
   fclose(f);
-  t_print("ZGEOM: save req=%dx%d at %d,%d\n", w, h, x, y);
+  t_print("ZGEOM: save %dx%d at %d,%d\n", w, h, x, y);
+  // ZGEOMFIX: синхронизируемся с props радио — при выходе радио запишет
+  // эти цифры в display_width/display_height/display_size, и при следующем
+  // старте radio_create_visual построится под наш реальный размер.
+  if (display_size == 1) {  // трогаем только режим Custom
+    display_width[1]  = w;
+    display_height[1] = h;
+    t_print("ZGEOM: sync display_size[1] -> %dx%d\n", w, h);
+  }
 }
 
 static gboolean main_delete (GtkWidget *widget) {
-  zen_geom_save();  // ZGEOMFIX: zapomnit razmer poka on nastoyashchiy
+  zen_geom_save();  // ZGEOMFIX: единственное место сохранения, размер ещё реальный
   if (radio != NULL) {
     radio_stop_program();
   }
@@ -343,8 +399,30 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   // Create top window with minimum size
   //
   top_window = gtk_application_window_new (app);
+  gtk_window_set_keep_below(GTK_WINDOW(top_window), TRUE);
   gtk_widget_set_size_request(top_window, 100, 100);
   gtk_window_set_title (GTK_WINDOW (top_window), "piHPSDR-Improved");
+  //
+  // ZFREQ: custom title bar with digital scale and buttons
+  //
+  hfreq_conf_load();
+  pan_text_load_conf();
+  hfreq_label = gtk_label_new("0.000.000");
+  gtk_widget_set_name(hfreq_label, "hfreq_label");
+  hfreq_css_apply();
+  hfreq_b_label = gtk_label_new("0.000.000");
+  gtk_widget_set_name(hfreq_b_label, "hfreq_b_label");
+  hfreq_css_apply();
+  GtkWidget *hbar = gtk_header_bar_new();
+    gtk_widget_set_margin_start(hfreq_label, 19);
+  gtk_header_bar_pack_start(GTK_HEADER_BAR(hbar), hfreq_label);
+  /* ZFREQ-B: B ne pack_end — ee podnimet radio.c v levuyu gruppu, srazu posle BAR */
+  gtk_header_bar_set_custom_title(GTK_HEADER_BAR(hbar), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+  gtk_header_bar_set_has_subtitle(GTK_HEADER_BAR(hbar), FALSE);
+  gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(hbar), TRUE);
+  /* ZFREQ-B: knopka svorachivaniya ubrana — sleva dubliruet shtatnuyu minus i krestik GTK */
+  gtk_window_set_titlebar(GTK_WINDOW(top_window), hbar);
+  g_timeout_add(200, hfreq_update_cb, NULL);
   //
   // do not use GTK_WIN_POS_CENTER_ALWAYS, since this will let the
   // window jump back to the center each time the window is
@@ -356,9 +434,7 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   //       anyway.
   //
   gtk_window_set_position(GTK_WINDOW(top_window), GTK_WIN_POS_CENTER);
-  gtk_window_set_resizable(GTK_WINDOW(top_window), TRUE);
-  gtk_window_unfullscreen(GTK_WINDOW(top_window));
-  gtk_window_set_keep_above(GTK_WINDOW(top_window), FALSE);  // ZGEOMFIX: razreshena rastyazhka myshkoy
+  gtk_window_set_resizable(GTK_WINDOW(top_window), FALSE);
   //
   // Get the position of the top window, and then determine
   // to which monitor this position belongs.
@@ -400,11 +476,7 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   }
 
   g_signal_connect (top_window, "delete-event", G_CALLBACK (main_delete), NULL);
-  zen_geom_load();  // ZGEOM: vosstanovit razmer okna
-  gtk_window_set_resizable(GTK_WINDOW(top_window), TRUE);
-  gtk_window_unfullscreen(GTK_WINDOW(top_window));
-  gtk_window_set_keep_above(GTK_WINDOW(top_window), FALSE);  // ZGEOM: rastyazhka myshkoy
-  g_signal_connect(top_window, "configure-event", G_CALLBACK(zen_geom_on_configure), NULL);  // ZGEOM
+  zen_geom_load();
   topgrid = gtk_grid_new();
   gtk_widget_set_size_request(topgrid, display_width[display_size], display_height[display_size]);
   gtk_grid_set_row_homogeneous(GTK_GRID(topgrid), FALSE);

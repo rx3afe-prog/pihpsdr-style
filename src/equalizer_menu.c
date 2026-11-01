@@ -178,7 +178,7 @@ void equalizer_menu(GtkWidget *parent) {
   gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
   gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);

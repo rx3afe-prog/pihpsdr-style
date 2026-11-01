@@ -144,7 +144,7 @@ void band_menu(GtkWidget *parent, int id) {
   gtk_grid_set_row_homogeneous(GTK_GRID(grid), TRUE);
   gtk_grid_set_column_spacing (GTK_GRID(grid), 5);
   gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_widget_set_size_request(close_b, 150, 0);

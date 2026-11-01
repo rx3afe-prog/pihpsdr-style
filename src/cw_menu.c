@@ -178,7 +178,7 @@ void cw_menu(GtkWidget *parent) {
   //
   // Top row in original grid: Close Button and Option/CWtext selection
   //
-  btn = gtk_button_new_with_label("Close");
+  btn = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);

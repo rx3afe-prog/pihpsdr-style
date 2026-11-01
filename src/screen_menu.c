@@ -42,6 +42,8 @@ static guint apply_timeout = 0;
 static int my_display_width;
 static int my_display_height;
 static int my_display_size;
+extern int zen_active(void);
+
 static int my_rx_stack_horizontal;
 
 //
@@ -119,6 +121,7 @@ static void height_cb(GtkWidget *widget, gpointer data) {
 }
 
 static void horizontal_cb(GtkWidget *widget, gpointer data) {
+  if (zen_active()) { gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), TRUE); return; }
   my_rx_stack_horizontal = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   schedule_apply();
 }
@@ -156,7 +159,7 @@ void screen_menu(GtkWidget *parent) {
   gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
   int row = 0;
   int col = 0;
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);

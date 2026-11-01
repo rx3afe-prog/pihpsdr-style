@@ -609,6 +609,7 @@ src/switch_menu.o \
 src/test_menu.o \
 src/theme.o \
 src/theme_menu.o \
+src/text_menu.o \
 src/toolbar.o \
 src/toolbar_menu.o \
 src/transmitter.o \

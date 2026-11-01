@@ -20,6 +20,22 @@
 #include <gtk/gtk.h>
 #include <math.h>
 
+//
+// Screen positions (pixels) of the AGC knee (G) and hang (H) lines
+// in the panadapter. Maintained by rx_panadapter.c, -1 = not drawn.
+//
+extern int pan_agc_knee_y;
+extern int pan_agc_hang_y;
+extern int pan_agc_right_x;
+extern double pan_dbm_per_pixel;
+
+// 0 = no AGC line drag, 1 = knee (G), 2 = hang (H)
+static int agc_drag = 0;
+
+// Grab distance in pixels around an AGC line
+#define AGC_GRAB_ZONE 12
+
+
 #include <wdsp.h>
 
 #include "agc.h"
@@ -77,6 +93,29 @@ static void rx_weak_notify(gpointer data, GObject  *obj) {
 }
 
 // cppcheck-suppress constParameterPointer
+//
+// Vertical drag of the panadapter scale is only active when the
+// drag starts in the dBm scale area at the left edge of the
+// display, where the dBm numbers (0, -20, -40 ...) are drawn.
+// PAN_SCALE_ZONE is the width of that area in pixels.
+//
+#define PAN_SCALE_ZONE 75
+
+// Button that started the current drag: 0 none, 1 left, 3 right
+static int drag_button;
+
+//
+// x position of the cursor line ("visir") on the panadapter,
+// -1 = line hidden. The line is a marker only: it does not tune.
+//
+int pan_cursor_x = -1;
+//
+// 0 = cursor line hidden, 1 = visible and following the mouse.
+// Toggled by a right click; while hidden, mouse movement
+// does not move it.
+//
+int pan_cursor_on = 0;
+
 gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointer data, int from) {
   const RECEIVER *rx = (RECEIVER *)data;
 
@@ -86,8 +125,41 @@ gboolean rx_button_press_event(GtkWidget *widget, GdkEventButton *event, gpointe
       last_y = (int)(event->y + 0.5);
       has_movedx = has_movedy = FALSE;
       pressed = TRUE;
-    } else if (event->button == GDK_BUTTON_SECONDARY) {
-      g_idle_add(ext_start_rx_menu, NULL);
+      drag_button = GDK_BUTTON_PRIMARY;
+      //
+      // Grab an AGC line if the click is close to it.
+      //
+      agc_drag = 0;
+
+      if (from == 0
+          && rx->agc != AGC_OFF
+          && rx->agc != AGC_FIXED) {
+        int dk = last_y - pan_agc_knee_y;
+        int dh = last_y - pan_agc_hang_y;
+
+        if (dk < 0) { dk = -dk; }
+
+        if (dh < 0) { dh = -dh; }
+
+        if (pan_agc_knee_y >= 0 && dk <= AGC_GRAB_ZONE) {
+          agc_drag = 1;
+        } else if (pan_agc_hang_y >= 0 && dh <= AGC_GRAB_ZONE) {
+          agc_drag = 2;
+        }
+      }
+
+          } else if (event->button == GDK_BUTTON_SECONDARY) {
+      //
+      // Right button: remember the start point and wait.
+      // A vertical drag started in the dBm scale area adjusts
+      // the TOP of the scale; a plain click (no movement)
+      // still opens the menu.
+      //
+      last_x = (int)(event->x + 0.5);
+      last_y = (int)(event->y + 0.5);
+      has_movedx = has_movedy = FALSE;
+      pressed = TRUE;
+      drag_button = GDK_BUTTON_SECONDARY;
     }
   } else {
     making_active = TRUE;
@@ -133,11 +205,23 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
     making_active = FALSE;
     rx_set_active(rx);
 
-    if (event->button == GDK_BUTTON_SECONDARY) {
-      g_idle_add(ext_start_rx_menu, NULL);
-    }
+    //
+    // Right click no longer opens the RX menu anywhere on the
+    // panadapter: it is now the VFO snap ("cursor") action.
+    //
   } else {
     if (pressed) {
+      //
+      // An AGC line drag ends here: do not treat it as a
+      // VFO click or a scale drag.
+      //
+      if (agc_drag) {
+        agc_drag = 0;
+        pressed = FALSE;
+        rx_save_state(rx);
+        return TRUE;
+      }
+
       int x = (int)(event->x + 0.5);
       int y = (int)(event->y + 0.5);
       int dy = (y - last_y) / 5;
@@ -178,6 +262,42 @@ gboolean rx_button_release_event(GtkWidget *widget, GdkEventButton *event, gpoin
         }
 
         pressed = FALSE;
+      } else if (event->button == GDK_BUTTON_SECONDARY) {
+        //
+        // Right button: a vertical drag lowers/raises the TOP of
+        // the scale (panadapter_high) while the bottom stays put;
+        // a plain click (no movement) opens the RX menu as before.
+        //
+        if (has_movedy && from == 0 && pan_updown_drag) {
+          if (dy) {
+            rx->panadapter_high -= dy;
+
+            //
+            // Keep the top within reasonable bounds
+            //
+            if (rx->panadapter_high > 0) { rx->panadapter_high = 0; }
+
+            if (rx->panadapter_high < rx->panadapter_low + 50) { rx->panadapter_high = rx->panadapter_low + 50; }
+
+            radio_set_panhigh(rx->id, rx->panadapter_high);
+
+          }
+        } else if (!has_movedx && !has_movedy && from == 0) {
+          //
+          // Right click on the panadapter: toggle the cursor
+          // line ("visir"). While visible, it follows the mouse
+          // position. The VFO is NOT tuned; tuning is a left click.
+          //
+          if (pan_cursor_on) {
+            pan_cursor_on = 0;   // hide the cursor line
+            pan_cursor_x = -1;
+          } else {
+            pan_cursor_on = 1;   // show it; it follows the mouse
+            pan_cursor_x = x;
+          }
+        }
+
+        pressed = FALSE;
       }
     }
   }
@@ -195,7 +315,7 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   // it may happen that the button press event for "re-focusing"
   // the menu window also ends up in the receiver panel, and that
   // the subsequent button release event is not forwarded to the
-  // receiver panal.
+  // receiver panel.
   // Subsequent mouse moves (without a button pressed) then led to
   // wild VFO frequency changes. The first temporary solution was to
   // ignore all button press events if a (sub-)menu window is open, but
@@ -203,7 +323,16 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   // looking HERE if the mouse button is pressed, and if not, ignore the
   // move.
   //
-  int button_down = (event->state & (GDK_BUTTON1_MASK | GDK_BUTTON2_MASK)) != 0;
+  //
+  // The cursor line follows the mouse position over the
+  // panadapter in real time.
+  //
+  if (from == 0 && pan_cursor_on) {
+    pan_cursor_x = (int)(event->x + 0.5);
+  }
+
+  int button_down = (event->state & (GDK_BUTTON1_MASK | GDK_BUTTON3_MASK)) != 0;
+  int left_down = (event->state & GDK_BUTTON1_MASK) != 0;
 
   //
   // if !pressed, we may come from the destruction
@@ -215,9 +344,49 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
                                     &x,
                                     &y,
                                     &state);
+
+    //
+    // Dragging an AGC line (G or H): adjust the value and skip
+    // the usual VFO / scale handling.
+    //
+    if (agc_drag && from == 0) {
+      int dyagc = y - last_y;
+
+      if (dyagc != 0) {
+        double ddb = (double)dyagc * pan_dbm_per_pixel;
+        int lo_dB = rx->panadapter_low + 2;
+        int hi_dB = rx->panadapter_high - 2;
+
+        if (agc_drag == 1) {
+          rx->agc_thresh -= ddb;
+
+          if (rx->agc_thresh > hi_dB) { rx->agc_thresh = hi_dB; }
+
+          if (rx->agc_thresh < lo_dB) { rx->agc_thresh = lo_dB; }
+
+          SetRXAAGCThresh(rx->id, rx->agc_thresh, (double)rx->afft_size, (double)rx->sample_rate);
+          GetRXAAGCTop(rx->id, &rx->agc_gain);
+            extern void zen_agc_slider_sync(int id);
+            zen_agc_slider_sync(rx->id);
+        } else {
+          rx->agc_hang -= ddb;
+
+          if (rx->agc_hang > hi_dB) { rx->agc_hang = hi_dB; }
+
+          if (rx->agc_hang < lo_dB) { rx->agc_hang = lo_dB; }
+
+          SetRXAAGCHangLevel(rx->id, rx->agc_hang);
+        }
+
+        last_y = y;
+      }
+
+      return TRUE;
+    }
+
     //
     // Sometimes it turned out to be difficult to "jump" to a
-    // new frequency by just clicking in the panadaper. Futher analysis
+    // new frequency by just clicking in the panadapter. Further analysis
     // showed that there were "moves" with zero offset arriving between
     // pressing and releasing the mouse button.
     // Accepting such a "move" between a  "press" and the next "release" event
@@ -231,7 +400,13 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
     int dx = x - last_x;
     int dy = (y - last_y) / 5;
 
-    if (dx != 0) {
+    //
+    // The vertical scale drag is only active if the drag started
+    // in the dBm scale area at the left edge of the display.
+    //
+    int scale_zone = (last_x <= PAN_SCALE_ZONE);
+
+    if (left_down && dx != 0) {
       if (has_movedx || dx < -1 || dx > 1) {
         int id = active_receiver->id;
         vfo_id_move(id, (long long)((double)dx * rx->cB), FALSE);
@@ -240,20 +415,40 @@ gboolean rx_motion_notify_event(GtkWidget *widget, GdkEventMotion *event, gpoint
       }
     }
 
-    if (dy != 0 && from == 0 && pan_updown_drag) {
+    if (scale_zone && dy != 0 && from == 0 && pan_updown_drag) {
       if (has_movedy || dy < -1 || dy > 1) {
-        rx->panadapter_low += dy;
+        if (drag_button == GDK_BUTTON_SECONDARY) {
+          //
+          // Right button drives the TOP of the scale:
+          // drag down lowers the ceiling (compress), drag up
+          // raises it (expand). The bottom stays put.
+          //
+          rx->panadapter_high -= dy;
+
+          //
+          // Keep the top within reasonable bounds
+          //
+          if (rx->panadapter_high > 0) { rx->panadapter_high = 0; }
+
+          if (rx->panadapter_high < rx->panadapter_low + 50) { rx->panadapter_high = rx->panadapter_low + 50; }
+
+          radio_set_panhigh(rx->id, rx->panadapter_high);
+
+        } else {
+          rx->panadapter_low += dy;
+
+          //
+          // Keep value within reasonable bounds
+          //
+          if (rx->panadapter_low < -160) { rx->panadapter_low = -160; }
+
+          if (rx->panadapter_low > rx->panadapter_high - 50) { rx->panadapter_low = rx->panadapter_high - 50; }
+
+          radio_set_panlow(rx->id, rx->panadapter_low);   // store "by the band"
+        }
+
         last_y = y;
         has_movedy = TRUE;
-
-        //
-        // Keep value within reasonable bounds
-        //
-        if (rx->panadapter_low < -160) { rx->panadapter_low = -160; }
-
-        if (rx->panadapter_low > rx->panadapter_high - 50) { rx->panadapter_low = rx->panadapter_high - 50; }
-
-        radio_set_panlow(rx->id, rx->panadapter_low);   // store "by the band"
       }
     }
   }
@@ -577,13 +772,12 @@ static gboolean rx_panel_draw_frame_cb(GtkWidget *widget, cairo_t *cr, gpointer 
   return FALSE;
 }
 
-int zen_w = 0;
-int zen_h = 0;
+extern int zen_w;
+extern int zen_h;
 extern void radio_reconfigure(void);
 
 static int zen_grip_x, zen_grip_y, zen_grip_w, zen_grip_h;
 static int zen_dragging = 0;
-static int zen_overhead = 0; /* ZENOVH */
 static int zen_in_fit = 0;
 static int zen_pending_w = -1, zen_pending_h = -1;
 static int zen_min_w = -1, zen_min_h = -1;
@@ -618,16 +812,6 @@ static gboolean zen_grip_press_cb(GtkWidget *w, GdkEventButton *e, gpointer d) {
   zen_grip_y = (int)e->y_root;
   zen_grip_w = rx->width + 2 * RX_DISPLAY_INSET;
   zen_grip_h = rx->height;
-  {
-    GtkWidget *tl = gtk_widget_get_toplevel(GTK_WIDGET(w));
-    gint ww2, wh2;
-    if (tl != NULL && GTK_IS_WINDOW(tl)) {
-      gtk_window_get_size(GTK_WINDOW(tl), &ww2, &wh2);
-      zen_overhead = wh2 - rx->height;
-      if (zen_overhead < 0) zen_overhead = 0;
-      g_print("ZGRIP: overhead=%d\n", zen_overhead);
-    }
-  }
   return TRUE;
 }
 
@@ -712,11 +896,11 @@ static void zen_fit_window(RECEIVER *rx) {
   tl = gtk_widget_get_toplevel(GTK_WIDGET(rx->panel));
   if (tl == NULL || !GTK_IS_WINDOW(tl)) return;
   nw = rx->width;
-  nh = rx->height + zen_overhead; /* ZENOVH */
+  nh = rx->height;
   if (nw < 200) { nw = 200; zen_w = nw + 2 * RX_DISPLAY_INSET; clamped = 1; }
-  if (nh < 150 + zen_overhead) { nh = 150 + zen_overhead; zen_h = 150; clamped = 1; }
+  if (nh < 150) { nh = 150; zen_h = nh; clamped = 1; }
   if (zen_min_w > 0 && nw < zen_min_w) { nw = zen_min_w; zen_w = nw + 2 * RX_DISPLAY_INSET; clamped = 1; }
-  if (zen_min_h > 0 && nh < zen_min_h) { nh = zen_min_h; zen_h = zen_min_h - zen_overhead; clamped = 1; }
+  if (zen_min_h > 0 && nh < zen_min_h) { nh = zen_min_h; zen_h = nh; clamped = 1; }
   if (clamped) {
     zen_in_fit = 1;
     radio_reconfigure();
@@ -743,17 +927,15 @@ static void zen_ensure_grip(RECEIVER *rx) {
     gtk_fixed_put(GTK_FIXED(rx->panel), zg, 0, 0);
     gtk_widget_show(zg);
   }
-  if (zg != NULL) {
-    GtkWidget *par = gtk_widget_get_parent(zg);
-    if (par != NULL) { g_object_ref(zg); gtk_container_remove(GTK_CONTAINER(par), zg); gtk_fixed_put(GTK_FIXED(rx->panel), zg, 0, 0); g_object_unref(zg); }
-  }
   if (rx->width + 2 * RX_DISPLAY_INSET > 40 && rx->height > 40) {
     gtk_fixed_move(GTK_FIXED(rx->panel), zg, rx->width + 2 * RX_DISPLAY_INSET - 28, rx->height - 28);
-    g_print("ZGRIP: at %d,%d panel w=%d h=%d\n", rx->width + 2 * RX_DISPLAY_INSET - 28, rx->height - 28, rx->width, rx->height);
   }
   zen_reposition_unzen(rx);
   zen_fit_window(rx);
 }
+static int zrx_last_w = -1;
+static int zrx_last_h = -1;
+
 void rx_reconfigure(RECEIVER *rx, int height) {
   int y = RX_DISPLAY_INSET;
   //
@@ -768,7 +950,11 @@ void rx_reconfigure(RECEIVER *rx, int height) {
   int wheight = inner;
   rx->height = height; // total height
   gtk_widget_set_size_request(rx->panel, rx->width + 2 * RX_DISPLAY_INSET, rx->height);
-  t_print("%s: rx=%d width=%d height=%d\n", __func__, rx->id, rx->width, rx->height);
+  if (zrx_last_w != rx->width || zrx_last_h != height) {
+      t_print("%s: rx=%d width=%d height=%d\n", __func__, rx->id, rx->width, rx->height);
+    zrx_last_w = rx->width;
+    zrx_last_h = height;
+  }
 
   if (rx->display_panadapter && rx->display_waterfall) {
     wheight = (rx->waterfall_percent * inner) / 100;
@@ -802,7 +988,6 @@ void rx_reconfigure(RECEIVER *rx, int height) {
       gtk_fixed_put(GTK_FIXED(rx->panel), rx->waterfall, RX_DISPLAY_INSET, y);
     } else {
       // set the size
-      t_print("%s: waterfall set_size_request: width:%d height:%d\n", __func__, rx->width, wheight);
       gtk_widget_set_size_request(rx->waterfall, rx->width, wheight);
       // move the current one
       gtk_fixed_move(GTK_FIXED(rx->panel), rx->waterfall, RX_DISPLAY_INSET, y);
@@ -1592,14 +1777,14 @@ static void rx_full_buffer(RECEIVER *rx) {
       t_print("%s: id=%d fexchange0: error=%d\n", __func__, rx->id, error);
     }
 
+    rx_process_buffer(rx);
+    g_mutex_unlock(&rx->mutex);
+
     if (rx->displaying) {
       g_mutex_lock(&rx->display_mutex);
       Spectrum0(1, rx->id, 0, 0, rx->iq_input_buffer);
       g_mutex_unlock(&rx->display_mutex);
     }
-
-    rx_process_buffer(rx);
-    g_mutex_unlock(&rx->mutex);
   }
 }
 

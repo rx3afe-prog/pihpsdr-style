@@ -1411,6 +1411,14 @@ void vfo_update(void) {
   int f_k; // kHz part
   int f_h; // Hz  part
   const int bdx = vfo_b_dx(vfl);
+  extern int vfo_dial_use_custom_color;   /* DIALCSS PATCH */
+  extern GdkRGBA vfo_dial_custom_color;
+  extern double vfo_dial_size_scale;
+extern int vfo_status_use_custom;    /* PSTEXT PATCH */
+extern GdkRGBA vfo_status_color;
+extern double vfo_status_brightness;
+extern double vfo_status_size_scale;
+extern int zen_active(void);
 
   if (can_transmit) { oob = transmitter->out_of_band; }
 
@@ -1425,19 +1433,36 @@ void vfo_update(void) {
     if (txvfo == 0 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else if (vfo[0].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color; dc.alpha *= 0.7;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else if (id != 0) {
-      cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color; dc.alpha *= 0.45;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_OK);
+      }
     }
 
     f_m = af / 1000000LL;
     f_k = (af - 1000000LL * f_m) / 1000;
     f_h = (af - 1000000LL * f_m - 1000 * f_k);
-    cairo_set_font_size(cr, vfl->size2);
-    cairo_show_text(cr, "A:");
-    cairo_set_font_size(cr, vfl->size3);
+    cairo_set_font_size(cr, (vfl->size2 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
+    cairo_show_text(cr, "A");
+    cairo_set_source_rgba(cr, 0.25, 0.95, 0.35, 1.0);
+    cairo_show_text(cr, ":");
+    cairo_set_font_size(cr, (vfl->size3 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
 
     if (txvfo == 0 && oob) {
       cairo_show_text(cr, "Out of band");
@@ -1449,7 +1474,7 @@ void vfo_update(void) {
       // Draw the "Hz" with three figures at the end of the dial,
       //
       int pos = vfl->vfo_a_r;
-      cairo_set_font_size(cr, vfl->size2);
+      cairo_set_font_size(cr, (vfl->size2 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
       snprintf(temp_text, sizeof(temp_text), "%03d", f_h);
       cairo_text_extents(cr, temp_text, &extents);
       pos -= (extents.width + 6);
@@ -1458,10 +1483,10 @@ void vfo_update(void) {
       //
       // Draw the kHz before that
       //
-      cairo_set_font_size(cr, vfl->size3);
+      cairo_set_font_size(cr, (vfl->size3 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
       snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
       cairo_text_extents(cr, temp_text, &extents);
-      pos -= (extents.width + (vfl->size2 / 3));
+      pos -= (extents.width + ((vfl->size2 * vfo_dial_size_scale) / 3));
       cairo_move_to(cr, pos, vfl->vfo_a_y);
       cairo_show_text(cr, temp_text);
     }
@@ -1472,25 +1497,43 @@ void vfo_update(void) {
   // Draw VFO B Dial.
   //
   // -----------------------------------------------------------
-  if (vfl->vfo_b_l >= 0) {
+  /* ZFREQ-B: rodnoj readout B vyiklyuchen — tsifra B zhivet v zagolovke okna */
+  if (0) {
     cairo_move_to(cr, vfl->vfo_b_l + bdx, vfl->vfo_b_y);
 
     if (txvfo == 1 && (radio_is_transmitting() || oob)) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else if (vfo[1].entered_frequency[0]) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color; dc.alpha *= 0.7;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else if (id != 1) {
-      cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color; dc.alpha *= 0.45;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_OK);
+      if (vfo_dial_use_custom_color) { /* DIALCSS PATCH */
+        GdkRGBA dc = vfo_dial_custom_color;
+        cairo_set_source_rgba(cr, dc.red, dc.green, dc.blue, dc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_OK);
+      }
     }
 
     f_m = bf / 1000000LL;
     f_k = (bf - 1000000LL * f_m) / 1000;
     f_h = (bf - 1000000LL * f_m - 1000 * f_k);
-    cairo_set_font_size(cr, vfl->size2);
-    cairo_show_text(cr, "B:");
-    cairo_set_font_size(cr, vfl->size3);
+    cairo_set_font_size(cr, (vfl->size2 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
+    cairo_show_text(cr, "B");
+    cairo_set_source_rgba(cr, 0.25, 0.95, 0.35, (id == 1 ? 1.0 : 0.45));
+    cairo_show_text(cr, ":");
+    cairo_set_font_size(cr, (vfl->size3 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
 
     if (txvfo == 1 && oob) {
       cairo_show_text(cr, "Out of band");
@@ -1502,7 +1545,7 @@ void vfo_update(void) {
       // Draw the "Hz" with three figures at the end of the dial,
       //
       int pos = vfl->vfo_b_r + bdx;
-      cairo_set_font_size(cr, vfl->size2);
+      cairo_set_font_size(cr, (vfl->size2 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
       snprintf(temp_text, sizeof(temp_text), "%03d", f_h);
       cairo_text_extents(cr, temp_text, &extents);
       pos -= (extents.width + 6);
@@ -1511,10 +1554,10 @@ void vfo_update(void) {
       //
       // Draw the kHz before that
       //
-      cairo_set_font_size(cr, vfl->size3);
+      cairo_set_font_size(cr, (vfl->size3 * vfo_dial_size_scale * (zen_active() ? 0.7 : 1.0)));
       snprintf(temp_text, sizeof(temp_text), "%0d.%03d", f_m, f_k);
       cairo_text_extents(cr, temp_text, &extents);
-      pos -= (extents.width + (vfl->size2 / 3));
+      pos -= (extents.width + ((vfl->size2 * vfo_dial_size_scale) / 3));
       cairo_move_to(cr, pos, vfl->vfo_b_y);
       cairo_show_text(cr, temp_text);
     }
@@ -1523,7 +1566,7 @@ void vfo_update(void) {
   //
   // Everything that follows uses font size 1
   //
-  cairo_set_font_size(cr, vfl->size1);
+  cairo_set_font_size(cr, (vfl->size1 * vfo_status_size_scale)); /* PSTEXT PATCH */
 
   // -----------------------------------------------------------
   //
@@ -1534,9 +1577,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->zoom_x, vfl->zoom_y);
 
     if (active_receiver->zoom > 1) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     snprintf(temp_text, sizeof(temp_text), "Zoom %d", active_receiver->zoom);
@@ -1552,9 +1605,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->ps_x, vfl->ps_y);
 
     if (transmitter->puresignal) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "PS");
@@ -1567,9 +1630,19 @@ void vfo_update(void) {
   // -----------------------------------------------------------
   if (vfl->rit_x != 0) {
     if (vfo[id].rit_enabled == 0) {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     }
 
     int val = vfo[id].rit;
@@ -1591,9 +1664,19 @@ void vfo_update(void) {
   // -----------------------------------------------------------
   if (can_transmit && vfl->xit_x != 0) {
     if (vfo[txvfo].xit_enabled == 0) {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     }
 
     int val = vfo[txvfo].xit;
@@ -1618,17 +1701,32 @@ void vfo_update(void) {
 
     switch (active_receiver->nb) {
     case 1:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NB");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NB2");
       break;
 
     default:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
       cairo_show_text(cr, "NB");
       break;
     }
@@ -1644,27 +1742,52 @@ void vfo_update(void) {
 
     switch (active_receiver->nr) {
     case 1:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NR");
       break;
 
     case 2:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NR2");
       break;
 
     case 3:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NR3");
       break;
 
     case 4:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "NR4");
       break;
 
     default:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
       cairo_show_text(cr, "NR");
       break;
     }
@@ -1679,9 +1802,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->anf_x, vfl->anf_y);
 
     if (active_receiver->anf) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "ANF");
@@ -1696,9 +1829,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->snb_x, vfl->snb_y);
 
     if (active_receiver->snb) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "SNB");
@@ -1713,9 +1856,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->dexp_x, vfl->dexp_y);
 
     if (transmitter->dexp) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "DExp");
@@ -1731,37 +1884,72 @@ void vfo_update(void) {
 
     switch (active_receiver->agc) {
     case AGC_OFF:
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
       cairo_show_text(cr, "AGC off");
       break;
 
     case AGC_LONG:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC long");
       break;
 
     case AGC_SLOW:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC slow");
       break;
 
     case AGC_MEDIUM:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC med");
       break;
 
     case AGC_FAST:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC fast");
       break;
 
     case AGC_CUSTOM:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC cstm");
       break;
 
     case AGC_FIXED:
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "AGC fix");
       break;
     }
@@ -1777,21 +1965,41 @@ void vfo_update(void) {
 
     if (transmitter->cfc && transmitter->compressor) {
       snprintf(temp_text, sizeof(temp_text), "CprCfc");
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     }
 
     if (transmitter->cfc && !transmitter->compressor) {
       snprintf(temp_text, sizeof(temp_text), "CFC on");
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     }
 
     if (!transmitter->cfc) {
       snprintf(temp_text, sizeof(temp_text), "Cmpr %d", (int) transmitter->compressor_level);
 
       if (transmitter->compressor) {
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
         cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
+      } else {
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
       } else {
         cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
       }
     }
 
@@ -1807,13 +2015,28 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->eq_x, vfl->eq_y);
 
     if (radio_is_transmitting() && transmitter->eq_enable) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "TxEQ");
     } else if (!radio_is_transmitting() && active_receiver->eq_enable) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
       cairo_show_text(cr, "RxEQ");
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
       cairo_show_text(cr, "EQ");
     }
   }
@@ -1827,9 +2050,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->div_x, vfl->div_y);
 
     if (diversity_enabled) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "DIV");
@@ -1851,7 +2084,12 @@ void vfo_update(void) {
 
     snprintf(temp_text, sizeof(temp_text), "Step %s", step_labels[s]);
     cairo_move_to(cr, vfl->step_x, vfl->step_y);
-    cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     cairo_show_text(cr, temp_text);
   }
 
@@ -1864,9 +2102,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->ctun_x, vfl->ctun_y);
 
     if (vfo[id].ctun) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "CTUN");
@@ -1881,9 +2129,19 @@ void vfo_update(void) {
     cairo_move_to(cr, vfl->cat_x, vfl->cat_y);
 
     if (cat_control > 0) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "CAT");
@@ -1900,7 +2158,12 @@ void vfo_update(void) {
     if (vox_enabled) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "VOX");
@@ -1917,7 +2180,12 @@ void vfo_update(void) {
     if (locked) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "Locked");
@@ -1934,7 +2202,12 @@ void vfo_update(void) {
     if (split) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     cairo_show_text(cr, "Split");
@@ -1951,7 +2224,12 @@ void vfo_update(void) {
     if (sat_mode != SAT_NONE) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     if (sat_mode == SAT_NONE || sat_mode == SAT_MODE) {
@@ -1970,7 +2248,12 @@ void vfo_update(void) {
     if (duplex) {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     } else {
-      cairo_set_source_rgba(cr, COLOUR_SHADE);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= 0.4 * vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_SHADE);
+      }
     }
 
     snprintf(temp_text, sizeof(temp_text), "Dup");
@@ -1987,7 +2270,12 @@ void vfo_update(void) {
 
   if (vfl->multifn_x != 0 && multi != 0) {
     if (multi == 1) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     }
@@ -2017,7 +2305,12 @@ void vfo_update(void) {
     if (lat < 50)  {
       cairo_set_source_rgba(cr, COLOUR_OK);
     } else if (lat < 150) {
-      cairo_set_source_rgba(cr, COLOUR_ATTN);
+      if (vfo_status_use_custom) { /* PSTEXT PATCH */
+        GdkRGBA stc = vfo_status_color; stc.alpha *= vfo_status_brightness;
+        cairo_set_source_rgba(cr, stc.red, stc.green, stc.blue, stc.alpha);
+      } else {
+        cairo_set_source_rgba(cr, COLOUR_ATTN);
+      }
     } else {
       cairo_set_source_rgba(cr, COLOUR_ALARM);
     }

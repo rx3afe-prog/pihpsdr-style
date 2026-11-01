@@ -502,7 +502,7 @@ void radio_menu(GtkWidget *parent) {
   gtk_grid_set_row_homogeneous (GTK_GRID(grid), FALSE);
   int row;
   int max_row;
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button_press_event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);

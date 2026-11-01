@@ -131,7 +131,7 @@ static void show_hf(void) {
   gtk_grid_set_column_homogeneous(GTK_GRID(mygrid), FALSE);
   gtk_grid_set_row_homogeneous(GTK_GRID(mygrid), TRUE);
   gtk_grid_set_column_spacing (GTK_GRID(mygrid), 5);
-  label = gtk_label_new("Band");
+  label = gtk_label_new("Диапазон");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(mygrid), label, 0, 0, 1, 1);
   label = gtk_label_new("RX Ant");
@@ -142,7 +142,7 @@ static void show_hf(void) {
   gtk_grid_attach(GTK_GRID(mygrid), label, 2, 0, 1, 1);
   label = gtk_label_new("   ");
   gtk_grid_attach(GTK_GRID(mygrid), label, 3, 0, 1, 1);
-  label = gtk_label_new("Band");
+  label = gtk_label_new("Диапазон");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(mygrid), label, 4, 0, 1, 1);
   label = gtk_label_new("RX Ant");
@@ -223,7 +223,7 @@ static void show_xvtr(void) {
   gtk_grid_set_column_homogeneous(GTK_GRID(mygrid), FALSE);
   gtk_grid_set_row_homogeneous(GTK_GRID(mygrid), TRUE);
   gtk_grid_set_column_spacing (GTK_GRID(mygrid), 5);
-  label = gtk_label_new("Band");
+  label = gtk_label_new("Диапазон");
   gtk_widget_set_name(label, "boldlabel");
   gtk_grid_attach(GTK_GRID(mygrid), label, 0, 0, 1, 1);
   label = gtk_label_new("RX Ant");
@@ -238,7 +238,7 @@ static void show_xvtr(void) {
     // second column is used
     label = gtk_label_new("   ");
     gtk_grid_attach(GTK_GRID(mygrid), label, 3, 0, 1, 1);
-    label = gtk_label_new("Band");
+    label = gtk_label_new("Диапазон");
     gtk_widget_set_name(label, "boldlabel");
     gtk_grid_attach(GTK_GRID(mygrid), label, 4, 0, 1, 1);
     label = gtk_label_new("RX Ant");
@@ -315,7 +315,7 @@ void ant_menu(GtkWidget *parent) {
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   grid = gtk_grid_new();
   gtk_grid_set_column_spacing (GTK_GRID(grid), 10);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
@@ -325,7 +325,7 @@ void ant_menu(GtkWidget *parent) {
     gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(hf_rb), TRUE);
     g_signal_connect(hf_rb, "toggled", G_CALLBACK(hf_rb_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), hf_rb, 1, 0, 1, 1);
-    GtkWidget *xvtr_rb = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(hf_rb), "XVTR");
+    GtkWidget *xvtr_rb = gtk_radio_button_new_with_label_from_widget(GTK_RADIO_BUTTON(hf_rb), "Трансвертер");
     g_signal_connect(xvtr_rb, "toggled", G_CALLBACK(xvtr_rb_cb), NULL);
     gtk_grid_attach(GTK_GRID(grid), xvtr_rb, 2, 0, 1, 1);
   }

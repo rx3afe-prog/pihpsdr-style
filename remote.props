@@ -1,5 +1,5 @@
 property_version=3.00
-auto_reconnect=0
+auto_reconnect=1
 audio_compression=0
 radio_tcp_enable=0
 current_host=127.0.0.1:50000

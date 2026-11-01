@@ -145,7 +145,7 @@ void oc_menu(GtkWidget *parent) {
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_row_spacing (GTK_GRID(grid), 5);
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, 0, 1, 1);
@@ -163,7 +163,7 @@ void oc_menu(GtkWidget *parent) {
   //
   gtk_scrolled_window_set_propagate_natural_width(GTK_SCROLLED_WINDOW(sw), TRUE);
   gtk_scrolled_window_set_propagate_natural_height(GTK_SCROLLED_WINDOW(sw), TRUE);
-  lbl = gtk_label_new("Band");
+  lbl = gtk_label_new("Диапазон");
   gtk_widget_set_name(lbl, "boldlabel");
   gtk_grid_attach(GTK_GRID(scrgrd), lbl, 0, 0, 1, 1);
   lbl = gtk_label_new("Rx");

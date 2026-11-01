@@ -351,7 +351,7 @@ void server_menu(GtkWidget *parent) {
   gtk_grid_set_row_spacing (GTK_GRID(grid), 10);
   int row = 0;
   //
-  btn = gtk_button_new_with_label("Close");
+  btn = gtk_button_new_with_label("Закрыть");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, row, 1, 1);
   row++;

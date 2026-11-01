@@ -79,7 +79,7 @@ void exit_menu(GtkWidget *parent) {
   gtk_grid_attach(GTK_GRID(grid), close_b, col, row, 1, 1);
   row++;
   col = 0;
-  GtkWidget *exit_b = gtk_button_new_with_label("Exit");
+  GtkWidget *exit_b = gtk_button_new_with_label("Выход");
   g_signal_connect (exit_b, "button-press-event", G_CALLBACK(exit_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), exit_b, col, row, 1, 1);
   col++;

@@ -60,7 +60,9 @@ typedef struct {
   float grad2w[4];
   float grad3w[4];
   float grad4w[4];
-  float dxspot[4]; // how to mark DX cluster spots on the panadapter
+  float dxspot[4];
+  float agc_label[4]; // colour of the "-G" AGC label on the panadapter
+  float agc_hang[4];  // colour of the "-H" hang label on the panadapter // how to mark DX cluster spots on the panadapter
 } THEME;
 
 //
@@ -112,5 +114,7 @@ void theme_apply_name(const char *name);    // select the active theme by name
 #define COLOUR_ALARM       theme_get_active()->alarm[0],  theme_get_active()->alarm[1],  theme_get_active()->alarm[2],  theme_get_active()->alarm[3]
 #define COLOUR_ALARM_WEAK  theme_get_active()->alarmw[0],  theme_get_active()->alarmw[1],  theme_get_active()->alarmw[2],  theme_get_active()->alarmw[3]
 #define COLOUR_DXSPOT      theme_get_active()->dxspot[0],  theme_get_active()->dxspot[1],  theme_get_active()->dxspot[2],  theme_get_active()->dxspot[3]
+#define COLOUR_AGC_LABEL theme_get_active()->agc_label[0], theme_get_active()->agc_label[1], theme_get_active()->agc_label[2], theme_get_active()->agc_label[3]
+#define COLOUR_AGC_HANG  theme_get_active()->agc_hang[0],  theme_get_active()->agc_hang[1],  theme_get_active()->agc_hang[2],  theme_get_active()->agc_hang[3]
 
 #endif

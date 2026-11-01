@@ -692,7 +692,7 @@ static void discovery(void) {
   //
   // The Exit button actually leaves the program
   //
-  btn = gtk_button_new_with_label("Exit");
+  btn = gtk_button_new_with_label("Выход");
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect (btn, "button-press-event", G_CALLBACK(exit_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, 0, 0, 1, 1);

@@ -198,6 +198,492 @@ static void average_cb(GtkToggleButton *widget, gpointer data) {
   }
 }
 
+extern double panadapter_line_width;
+
+static void panadapter_line_width_value_changed_cb(GtkWidget *widget, gpointer data) {
+  panadapter_line_width = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+extern double pan_grid_width;
+extern GdkRGBA pan_grid_custom_color;
+extern int pan_grid_use_custom_color;
+extern double pan_grid_brightness;
+/* === PAN TEXT UI PATCH: цвет и размер подписей === */
+#include <stdio.h>
+extern double pan_dbm_font_size;
+extern double pan_freq_font_size;
+extern int pan_vgrid_use_custom_color;   /* VGRID PATCH */
+extern GdkRGBA pan_vgrid_custom_color;
+extern int pan_filter_use_custom_color;  /* COLORSET PATCH */
+extern GdkRGBA pan_filter_custom_color;
+extern double pan_filter_brightness;
+extern int vfo_dial_use_custom_color;   /* DIALCSS PATCH */
+extern GdkRGBA vfo_dial_custom_color;
+extern double vfo_dial_size_scale;
+extern int tb_use_custom;
+extern GdkRGBA tb_custom_color;
+extern double tb_brightness;
+extern double tb_font_size;
+extern int vfo_status_use_custom;    /* PSTEXT PATCH */
+extern GdkRGBA vfo_status_color;
+extern double vfo_status_brightness;
+extern double vfo_status_size_scale;
+extern double zvfostat_size_scale;  /* ZVFOSTAT: razmer napishey u filtra */
+extern GdkRGBA pan_dbm_color;
+extern GdkRGBA pan_freq_color;
+
+static void pan_text_save_conf(void) {
+  FILE *f;
+  char path[512];
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
+  f = fopen(path, "w");
+  if (f == NULL) { return; }
+  fprintf(f, "use_custom_color=%d\n", pan_grid_use_custom_color);
+  fprintf(f, "width=%.2f\n", pan_grid_width);
+  fprintf(f, "brightness=%.2f\n", pan_grid_brightness);
+  fprintf(f, "color_r=%.4f\n", pan_grid_custom_color.red);
+  fprintf(f, "color_g=%.4f\n", pan_grid_custom_color.green);
+  fprintf(f, "color_b=%.4f\n", pan_grid_custom_color.blue);
+  fprintf(f, "color_a=%.4f\n", pan_grid_custom_color.alpha);
+  fprintf(f, "dbm_font_size=%.2f\n", pan_dbm_font_size);
+  fprintf(f, "freq_font_size=%.2f\n", pan_freq_font_size);
+  fprintf(f, "dbm_color_r=%.4f\n", pan_dbm_color.red);
+  fprintf(f, "dbm_color_g=%.4f\n", pan_dbm_color.green);
+  fprintf(f, "dbm_color_b=%.4f\n", pan_dbm_color.blue);
+  fprintf(f, "dbm_color_a=%.4f\n", pan_dbm_color.alpha);
+  fprintf(f, "freq_color_r=%.4f\n", pan_freq_color.red);
+  fprintf(f, "freq_color_g=%.4f\n", pan_freq_color.green);
+  fprintf(f, "freq_color_b=%.4f\n", pan_freq_color.blue);
+  fprintf(f, "freq_color_a=%.4f\n", pan_freq_color.alpha);
+  fprintf(f, "vgrid_use_custom=%d\n", pan_vgrid_use_custom_color);
+  fprintf(f, "vgrid_r=%.4f\n", pan_vgrid_custom_color.red);
+  fprintf(f, "vgrid_g=%.4f\n", pan_vgrid_custom_color.green);
+  fprintf(f, "vgrid_b=%.4f\n", pan_vgrid_custom_color.blue);
+  fprintf(f, "vgrid_a=%.4f\n", pan_vgrid_custom_color.alpha);
+  fclose(f);
+}
+
+
+//
+// UISTYLE: restore cosmetics from panadapter_grid.conf at startup
+//
+void pan_text_load_conf(void) {
+  char path[512], line[256];
+  FILE *f;
+  snprintf(path, sizeof(path), "panadapter_grid.conf");
+  f = fopen(path, "r");
+  if (f == NULL) { return; }
+  while (fgets(line, sizeof(line), f) != NULL) {
+    if (sscanf(line, "use_custom_color=%d", &pan_grid_use_custom_color) == 1) {
+    } else if (sscanf(line, "width=%lf", &pan_grid_width) == 1) {
+      if (pan_grid_width < 0.5) pan_grid_width = 0.5;
+      if (pan_grid_width > 10.0) pan_grid_width = 10.0;
+    } else if (sscanf(line, "brightness=%lf", &pan_grid_brightness) == 1) {
+      if (pan_grid_brightness < 0.1) pan_grid_brightness = 0.1;
+      if (pan_grid_brightness > 2.0) pan_grid_brightness = 2.0;
+    } else if (sscanf(line, "color_r=%lf", &pan_grid_custom_color.red) == 1) {
+    } else if (sscanf(line, "color_g=%lf", &pan_grid_custom_color.green) == 1) {
+    } else if (sscanf(line, "color_b=%lf", &pan_grid_custom_color.blue) == 1) {
+    } else if (sscanf(line, "color_a=%lf", &pan_grid_custom_color.alpha) == 1) {
+    } else if (sscanf(line, "dbm_font_size=%lf", &pan_dbm_font_size) == 1) {
+      if (pan_dbm_font_size < 6.0) pan_dbm_font_size = 6.0;
+      if (pan_dbm_font_size > 40.0) pan_dbm_font_size = 40.0;
+    } else if (sscanf(line, "freq_font_size=%lf", &pan_freq_font_size) == 1) {
+      if (pan_freq_font_size < 6.0) pan_freq_font_size = 6.0;
+      if (pan_freq_font_size > 40.0) pan_freq_font_size = 40.0;
+    } else if (sscanf(line, "dbm_color_r=%lf", &pan_dbm_color.red) == 1) {
+    } else if (sscanf(line, "dbm_color_g=%lf", &pan_dbm_color.green) == 1) {
+    } else if (sscanf(line, "dbm_color_b=%lf", &pan_dbm_color.blue) == 1) {
+    } else if (sscanf(line, "dbm_color_a=%lf", &pan_dbm_color.alpha) == 1) {
+    } else if (sscanf(line, "freq_color_r=%lf", &pan_freq_color.red) == 1) {
+    } else if (sscanf(line, "freq_color_g=%lf", &pan_freq_color.green) == 1) {
+    } else if (sscanf(line, "freq_color_b=%lf", &pan_freq_color.blue) == 1) {
+    } else if (sscanf(line, "freq_color_a=%lf", &pan_freq_color.alpha) == 1) {
+    } else if (sscanf(line, "vgrid_use_custom=%d", &pan_vgrid_use_custom_color) == 1) {
+    } else if (sscanf(line, "vgrid_r=%lf", &pan_vgrid_custom_color.red) == 1) {
+    } else if (sscanf(line, "vgrid_g=%lf", &pan_vgrid_custom_color.green) == 1) {
+    } else if (sscanf(line, "vgrid_b=%lf", &pan_vgrid_custom_color.blue) == 1) {
+    } else if (sscanf(line, "vgrid_a=%lf", &pan_vgrid_custom_color.alpha) == 1) {
+    }
+  }
+  fclose(f);
+}
+
+static void pan_text_dbm_font_cb(GtkWidget *widget, gpointer data) {
+  pan_dbm_font_size = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  pan_text_save_conf();
+}
+
+static void pan_text_freq_font_cb(GtkWidget *widget, gpointer data) {
+  pan_freq_font_size = gtk_spin_button_get_value(GTK_SPIN_BUTTON(widget));
+  pan_text_save_conf();
+}
+
+static void pan_text_color_cb(GtkWidget *widget, gpointer data); /* PAN TEXT FWD PATCH */
+static void color_filter_custom_cb(GtkWidget *widget, gpointer data) { /* COLORSET PATCH */
+  pan_filter_use_custom_color = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+static void color_filter_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &pan_filter_custom_color);
+}
+static void color_filter_brightness_cb(GtkWidget *widget, gpointer data) {
+  pan_filter_brightness = gtk_range_get_value(GTK_RANGE(widget));
+}
+static GtkCssProvider *tb_provider = NULL;   /* DIALCSS PATCH */
+void tb_css_apply(void) {
+  char css[256];
+  if (tb_provider == NULL) {
+    tb_provider = gtk_css_provider_new();
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(tb_provider), GTK_STYLE_PROVIDER_PRIORITY_USER);
+  }
+  if (tb_use_custom) {
+    snprintf(css, sizeof(css), ".tbbtn label { color: rgba(%d, %d, %d, %.2f); font-size: %dpx; }",
+      (int)(tb_custom_color.red * 255.0), (int)(tb_custom_color.green * 255.0),
+      (int)(tb_custom_color.blue * 255.0), tb_brightness, (int)tb_font_size);
+  } else {
+    css[0] = 0;
+  }
+  gtk_css_provider_load_from_data(tb_provider, css, -1, NULL);
+}
+static void vfo_dial_use_custom_cb(GtkWidget *widget, gpointer data) {
+  vfo_dial_use_custom_color = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+static void vfo_dial_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &vfo_dial_custom_color);
+}
+static void vfo_dial_size_cb(GtkWidget *widget, gpointer data) {
+  vfo_dial_size_scale = gtk_range_get_value(GTK_RANGE(widget));
+}
+static void tb_use_custom_cb(GtkWidget *widget, gpointer data) {
+  tb_use_custom = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  tb_css_apply();
+}
+static void tb_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &tb_custom_color);
+  tb_css_apply();
+}
+static void tb_brightness_cb(GtkWidget *widget, gpointer data) {
+  tb_brightness = gtk_range_get_value(GTK_RANGE(widget));
+  tb_css_apply();
+}
+static void tb_font_cb(GtkWidget *widget, gpointer data) {
+  tb_font_size = gtk_range_get_value(GTK_RANGE(widget));
+  tb_css_apply();
+}
+static void vfo_status_use_custom_cb(GtkWidget *widget, gpointer data) { /* PSTEXT PATCH */
+  vfo_status_use_custom = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+static void vfo_status_color_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &vfo_status_color);
+}
+static void vfo_status_brightness_cb(GtkWidget *widget, gpointer data) {
+  vfo_status_brightness = gtk_range_get_value(GTK_RANGE(widget));
+}
+static void vfo_status_size_cb(GtkWidget *widget, gpointer data) {
+  vfo_status_size_scale = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void zvfostat_size_cb(GtkWidget *widget, gpointer data) {
+  zvfostat_size_scale = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void color_settings_dialog_cb(GtkWidget *widget, gpointer data) {
+  GtkWidget *dlg = gtk_dialog_new();
+  GtkWidget *cg = gtk_grid_new();
+  GtkWidget *l, *w;
+  gtk_window_set_title(GTK_WINDOW(dlg), "Color Settings");
+  gtk_window_set_default_size(GTK_WINDOW(dlg), 380, 220);
+  gtk_grid_set_row_spacing(GTK_GRID(cg), 5);
+  gtk_grid_set_column_spacing(GTK_GRID(cg), 5);
+  l = gtk_label_new("Filter Custom");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 0, 1, 1);
+  w = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), pan_filter_use_custom_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 0, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(color_filter_custom_cb), NULL);
+  l = gtk_label_new("Filter Color");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 1, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &pan_filter_custom_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 1, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(color_filter_color_cb), NULL);
+  l = gtk_label_new("Filter Brightness");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 2, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), pan_filter_brightness);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 2, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(color_filter_brightness_cb), NULL);
+  l = gtk_label_new("Dial Custom");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 3, 1, 1);
+  w = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), vfo_dial_use_custom_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 3, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(vfo_dial_use_custom_cb), NULL);
+  l = gtk_label_new("Dial Color");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 4, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &vfo_dial_custom_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 4, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(vfo_dial_color_cb), NULL);
+  l = gtk_label_new("Dial Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 5, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), vfo_dial_size_scale);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 5, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(vfo_dial_size_cb), NULL);
+  l = gtk_label_new("TB Custom");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 6, 1, 1);
+  w = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), tb_use_custom);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 6, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(tb_use_custom_cb), NULL);
+  l = gtk_label_new("TB Color");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 7, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &tb_custom_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 7, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(tb_color_cb), NULL);
+  l = gtk_label_new("TB Brightness");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 8, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), tb_brightness);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 8, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(tb_brightness_cb), NULL);
+  l = gtk_label_new("Шрифт кнопок");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 9, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 8.0, 25.0, 1.0);
+  gtk_range_set_value(GTK_RANGE(w), tb_font_size);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 9, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(tb_font_cb), NULL);
+  l = gtk_label_new("Status Custom");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 10, 1, 1);
+  w = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), vfo_status_use_custom);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 10, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(vfo_status_use_custom_cb), NULL);
+  l = gtk_label_new("Status Color");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 11, 1, 1);
+  w = gtk_color_button_new();
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(w), &vfo_status_color);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 11, 1, 1);
+  g_signal_connect(w, "color-set", G_CALLBACK(vfo_status_color_cb), NULL);
+  l = gtk_label_new("Status Brightness");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 12, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 5.0, 0.05); /* BRIGHT5 PATCH */
+  gtk_range_set_value(GTK_RANGE(w), vfo_status_brightness);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 12, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(vfo_status_brightness_cb), NULL);
+  l = gtk_label_new("Status Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 13, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), vfo_status_size_scale);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 13, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(vfo_status_size_cb), NULL);
+  l = gtk_label_new("Bar Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 14, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.5, 2.0, 0.05);
+  gtk_range_set_value(GTK_RANGE(w), zvfostat_size_scale);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 14, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(zvfostat_size_cb), NULL);
+  gtk_window_set_default_size(GTK_WINDOW(dlg), 420, 620);
+  tb_css_apply();
+  gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
+  gtk_widget_show_all(dlg);
+}
+
+//
+// HEADERCFG PATCH: header scale settings
+//
+extern double hfreq_font_size;
+extern char hfreq_color_hex[];
+extern char hfreq_tail_hex[];
+// ZFREQ-B: pereklyucheniya B-shkalyi v zagolovke (sinhronno s A)
+extern double hfreq_b_font_size;
+extern char hfreq_b_color_hex[];
+extern char hfreq_b_tail_hex[];
+extern int hfreq_bold;       /* ZFREQ-B: Tolstyi shrift */
+extern double hfreq_bright;  /* ZFREQ-B: yarkost shkaly */
+extern void hfreq_css_apply(void);
+extern void hfreq_conf_save(void);
+
+static void hfreq_size_cb(GtkWidget *widget, gpointer data) {
+  // ZFREQ-B: razmer odin dlya obeih tsifrovyih skal A i B v verhney planke
+  hfreq_font_size = gtk_range_get_value(GTK_RANGE(widget));
+  hfreq_b_font_size = hfreq_font_size;
+  hfreq_css_apply();
+  hfreq_conf_save();
+}
+
+static void hfreq_bold_cb(GtkWidget *widget, gpointer data) {
+  hfreq_bold = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  hfreq_css_apply();
+  hfreq_conf_save();
+}
+
+static void hfreq_bright_cb(GtkWidget *widget, gpointer data) {
+  hfreq_bright = gtk_range_get_value(GTK_RANGE(widget));
+  hfreq_css_apply();
+  hfreq_conf_save();
+}
+
+static void hfreq_color_pick_cb(GtkWidget *widget, gpointer data) {
+  int which = GPOINTER_TO_INT(data);
+  GdkRGBA color;
+  GtkWidget *dialog;
+  gboolean ok;
+  if (which) {
+    ok = gdk_rgba_parse(&color, hfreq_tail_hex);
+  } else {
+    ok = gdk_rgba_parse(&color, hfreq_color_hex);
+  }
+  if (!ok) {
+    color.red = which ? 0.0 : 0.88;
+    color.green = which ? 0.4 : 0.06;
+    color.blue = which ? 0.0 : 0.06;
+    color.alpha = 1.0;
+  }
+  dialog = gtk_color_chooser_dialog_new(which ? "Header Tail Color" : "Header Freq Color", NULL);
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
+    gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+    char hexbuf[16];
+    g_snprintf(hexbuf, sizeof(hexbuf), "#%02x%02x%02x",
+        (int)(color.red * 255.0 + 0.5),
+        (int)(color.green * 255.0 + 0.5),
+        (int)(color.blue * 255.0 + 0.5));
+    // ZFREQ-B: tsvet sinhronen dlya obeih skal A i B v verhney planke
+    g_strlcpy(which ? hfreq_tail_hex : hfreq_color_hex, hexbuf, 16);
+    g_strlcpy(which ? hfreq_b_tail_hex : hfreq_b_color_hex, hexbuf, 16);
+    hfreq_css_apply();
+    hfreq_conf_save();
+  }
+  gtk_widget_destroy(dialog);
+}
+
+static void pan_text_settings_dialog_cb(GtkWidget *widget, gpointer data) {
+  GtkWidget *dlg = gtk_dialog_new();
+  GtkWidget *cg = gtk_grid_new();
+  GtkWidget *l, *w;
+  gtk_window_set_title(GTK_WINDOW(dlg), "Panadapter Text");
+  gtk_window_set_default_size(GTK_WINDOW(dlg), 380, 300);
+  gtk_grid_set_row_spacing(GTK_GRID(cg), 5);
+  gtk_grid_set_column_spacing(GTK_GRID(cg), 5);
+  l = gtk_label_new("dBm Font Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 0, 1, 1);
+  w = gtk_spin_button_new_with_range(6.0, 40.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), pan_dbm_font_size);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 0, 1, 1);
+  g_signal_connect(w, "value_changed", G_CALLBACK(pan_text_dbm_font_cb), NULL);
+  l = gtk_label_new("Freq Font Size");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 1, 1, 1);
+  w = gtk_spin_button_new_with_range(6.0, 40.0, 1.0);
+  gtk_spin_button_set_value(GTK_SPIN_BUTTON(w), pan_freq_font_size);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 1, 1, 1);
+  g_signal_connect(w, "value_changed", G_CALLBACK(pan_text_freq_font_cb), NULL);
+  w = gtk_button_new_with_label("dBm Color");
+  gtk_grid_attach(GTK_GRID(cg), w, 0, 2, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(pan_text_color_cb), GINT_TO_POINTER(0));
+  w = gtk_button_new_with_label("Freq Color");
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 2, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(pan_text_color_cb), GINT_TO_POINTER(1));
+  // HEADERCFG: header scale
+  // HEADERCFG: tsifrovaya shkala A i B v verhney planke okna (zagolovok)
+  l = gtk_label_new("Шкала вверху: размер (A и B)");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 3, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 12.0, 48.0, 1.0);
+  gtk_range_set_value(GTK_RANGE(w), hfreq_font_size);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 3, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(hfreq_size_cb), NULL);
+  w = gtk_button_new_with_label("Шкала вверху: цвет частоты");
+  gtk_grid_attach(GTK_GRID(cg), w, 0, 4, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(0));
+  w = gtk_button_new_with_label("Шкала вверху: цвет Гц (хвост)");
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 4, 1, 1);
+  g_signal_connect(w, "clicked", G_CALLBACK(hfreq_color_pick_cb), GINT_TO_POINTER(1));
+  /* ZFREQ-B: galochka Tolstyi shrift */
+  w = gtk_check_button_new_with_label("Толстый шрифт");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(w), hfreq_bold);
+  gtk_grid_attach(GTK_GRID(cg), w, 0, 5, 1, 1);
+  g_signal_connect(w, "toggled", G_CALLBACK(hfreq_bold_cb), NULL);
+  /* ZFREQ-B: yarkost shkaly */
+  l = gtk_label_new("Шкала вверху: яркость");
+  gtk_grid_attach(GTK_GRID(cg), l, 0, 6, 1, 1);
+  w = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 20.0, 100.0, 5.0);
+  gtk_range_set_value(GTK_RANGE(w), hfreq_bright);
+  gtk_widget_set_size_request(w, 150, -1);
+  gtk_grid_attach(GTK_GRID(cg), w, 1, 6, 1, 1);
+  g_signal_connect(w, "value-changed", G_CALLBACK(hfreq_bright_cb), NULL);
+  gtk_container_add(GTK_CONTAINER(gtk_dialog_get_content_area(GTK_DIALOG(dlg))), cg);
+  gtk_widget_show_all(dlg);
+}
+static void pan_text_color_cb(GtkWidget *widget, gpointer data) {
+  int which = GPOINTER_TO_INT(data);
+  GdkRGBA color;
+  GtkWidget *dialog;
+  color = which ? pan_freq_color : pan_dbm_color;
+  dialog = gtk_color_chooser_dialog_new(which ? "Freq Color" : "dBm Color", NULL);
+  gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+  if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_OK) {
+    gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(dialog), &color);
+    if (which) { pan_freq_color = color; } else { pan_dbm_color = color; }
+    pan_text_save_conf();
+  }
+  gtk_widget_destroy(dialog);
+}
+extern double pan_dbm_font_size;
+extern double pan_freq_font_size;
+
+static void pan_grid_width_value_changed_cb(GtkWidget *widget, gpointer data) {
+  pan_grid_width = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void pan_grid_thin_cb(GtkWidget *widget, gpointer data) {
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) { pan_grid_width = 1.0; }
+}
+
+static void pan_grid_medium_cb(GtkWidget *widget, gpointer data) {
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) { pan_grid_width = 2.0; }
+}
+
+static void pan_grid_thick_cb(GtkWidget *widget, gpointer data) {
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) { pan_grid_width = 3.5; }
+}
+
+static void pan_grid_color_set_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &pan_grid_custom_color);
+  pan_grid_use_custom_color = 1;
+}
+
+static void pan_grid_use_custom_color_cb(GtkWidget *widget, gpointer data) {
+  pan_grid_use_custom_color = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)) ? 1 : 0;
+}
+
+static void pan_vgrid_use_custom_cb(GtkWidget *widget, gpointer data) { /* VGRID PATCH */
+  pan_vgrid_use_custom_color = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+}
+static void pan_vgrid_color_set_cb(GtkWidget *widget, gpointer data) {
+  gtk_color_chooser_get_rgba(GTK_COLOR_CHOOSER(widget), &pan_vgrid_custom_color);
+}
+static void pan_grid_brightness_value_changed_cb(GtkWidget *widget, gpointer data) {
+  pan_grid_brightness = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void pan_dbm_font_value_changed_cb(GtkWidget *widget, gpointer data) {
+  pan_dbm_font_size = gtk_range_get_value(GTK_RANGE(widget));
+}
+
+static void pan_freq_font_value_changed_cb(GtkWidget *widget, gpointer data) {
+  pan_freq_font_size = gtk_range_get_value(GTK_RANGE(widget));
+}
+
 static void panadapter_peaks_on_cb(GtkWidget *widget, gpointer data) {
   RECEIVER *myrx = (RECEIVER *)data;
   myrx->panadapter_peaks_on = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
@@ -390,18 +876,38 @@ void display_menu(GtkWidget *parent) {
   GtkWidget *headerbar = gtk_header_bar_new();
   gtk_window_set_titlebar(GTK_WINDOW(dialog), headerbar);
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(headerbar), TRUE);
+  { /* ZSCROLL PATCH: окно не вылезает за пределы экрана */
+    GdkRectangle mongeo = { 0, 0, 1024, 768 };
+    GdkDisplay *gdisp = gdk_display_get_default();
+    GdkMonitor *mon = gdisp ? gdk_display_get_primary_monitor(gdisp) : NULL;
+    if (mon == NULL && gdisp && gdk_display_get_n_monitors(gdisp) > 0) {
+      mon = gdk_display_get_monitor(gdisp, 0);
+    }
+    if (mon) { gdk_monitor_get_geometry(mon, &mongeo); }
+    int zmaxh = mongeo.height - 120; /* запас на шапку окна и панели */
+    if (zmaxh < 200) zmaxh = 200;
+    int zmaxw = mongeo.width - 40;
+    int zh = (460 < zmaxh) ? 460 : zmaxh;
+    int zw = (1020 < zmaxw) ? 1020 : zmaxw;
+    gtk_window_set_default_size(GTK_WINDOW(dialog), zw, zh);
+  }
   snprintf(title, sizeof(title), "piHPSDR-Improved - Display");
   gtk_header_bar_set_title(GTK_HEADER_BAR(headerbar), title);
   g_signal_connect (dialog, "delete_event", G_CALLBACK (close_cb), NULL);
   g_signal_connect (dialog, "destroy", G_CALLBACK (close_cb), NULL);
   GtkWidget *content = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  /* ZSCROLL PATCH: прокрутка, как у веб-страницы */
+  GtkWidget *zscroll = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(zscroll), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_widget_set_vexpand(zscroll, TRUE);
+  gtk_container_add(GTK_CONTAINER(content), zscroll);
   GtkWidget *grid = gtk_grid_new();
   gtk_grid_set_column_spacing(GTK_GRID(grid), 10);
   gtk_grid_set_column_homogeneous(GTK_GRID(grid), TRUE);
-  gtk_container_add(GTK_CONTAINER(content), grid);
+  gtk_container_add(GTK_CONTAINER(zscroll), grid);
   int row = 0;
   int col = 0;
-  btn = gtk_button_new_with_label("Close");
+  btn = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(btn, "close_button");
   g_signal_connect(btn, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), btn, col, row, 1, 1);
@@ -673,6 +1179,83 @@ void display_menu(GtkWidget *parent) {
     gtk_spin_button_set_value(GTK_SPIN_BUTTON(btn), (double)myrx->panadapter_ignore_noise_percentile);
     gtk_grid_attach(GTK_GRID(mygrid), btn, col + 1, row, 1, 1);
     g_signal_connect(btn, "value_changed", G_CALLBACK(panadapter_ignore_noise_percentile_value_changed_cb), myrx);
+    row++;
+    label = gtk_label_new("Line Width");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
+    GtkWidget *lw = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.1, 3.0, 0.1);
+    gtk_range_set_value(GTK_RANGE(lw), panadapter_line_width);
+    gtk_widget_set_size_request(lw, 150, -1);
+    gtk_grid_attach(GTK_GRID(mygrid), lw, col + 1, row, 1, 1);
+    g_signal_connect(lw, "value-changed", G_CALLBACK(panadapter_line_width_value_changed_cb), NULL);
+    row++;
+    label = gtk_label_new("Grid Width");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
+    GtkWidget *gw = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 3.0, 0.1);
+    gtk_range_set_value(GTK_RANGE(gw), pan_grid_width);
+    gtk_widget_set_size_request(gw, 150, -1);
+    gtk_grid_attach(GTK_GRID(mygrid), gw, col + 1, row, 1, 1);
+    g_signal_connect(gw, "value-changed", G_CALLBACK(pan_grid_width_value_changed_cb), NULL);
+    row++;
+    btn = gtk_check_button_new_with_label("Custom Grid Color");
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(btn), pan_grid_use_custom_color);
+    gtk_grid_attach(GTK_GRID(mygrid), btn, col, row, 2, 1);
+    g_signal_connect(btn, "toggled", G_CALLBACK(pan_grid_use_custom_color_cb), NULL);
+    row++;
+    label = gtk_label_new("Grid Color");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
+    GtkWidget *gcolor = gtk_color_button_new();
+    gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(gcolor), &pan_grid_custom_color);
+    gtk_grid_attach(GTK_GRID(mygrid), gcolor, col + 1, row, 1, 1);
+    g_signal_connect(gcolor, "color-set", G_CALLBACK(pan_grid_color_set_cb), NULL);
+    row++;
+    /* === VGRID PATCH: отдельный цвет вертикальной сетки === */
+    label = gtk_label_new("V Grid Custom");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
+    GtkWidget *vgt = gtk_check_button_new();
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(vgt), pan_vgrid_use_custom_color);
+    gtk_grid_attach(GTK_GRID(mygrid), vgt, col + 1, row, 1, 1);
+    g_signal_connect(vgt, "toggled", G_CALLBACK(pan_vgrid_use_custom_cb), NULL);
+    row++;
+    label = gtk_label_new("V Grid Color");
+    gtk_widget_set_name(label, "boldlabel");
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(mygrid), label, col, row, 1, 1);
+    GtkWidget *vgcol = gtk_color_button_new();
+    gtk_color_chooser_set_rgba(GTK_COLOR_CHOOSER(vgcol), &pan_vgrid_custom_color);
+    gtk_grid_attach(GTK_GRID(mygrid), vgcol, col + 1, row, 1, 1);
+    g_signal_connect(vgcol, "color-set", G_CALLBACK(pan_vgrid_color_set_cb), NULL);
+    row++;
+    /* === PAN TEXT UI PATCH v2: одна кнопка настроек === PAN CLEAN PATCH === */
+    {
+      GtkWidget *pgrid_ = gcolor, *pw;
+      while (pgrid_ != NULL && !GTK_IS_GRID(pgrid_)) { pgrid_ = gtk_widget_get_parent(pgrid_); }
+      if (pgrid_ != NULL) {
+        pw = gtk_button_new_with_label("Pan Text Settings");
+        gtk_widget_set_halign(pw, GTK_ALIGN_START); /* PAN BTN SMALL PATCH */
+        gtk_widget_set_size_request(pw, 110, -1);
+        gtk_grid_attach(GTK_GRID(pgrid_), pw, 0, row, 1, 1);
+        g_signal_connect(pw, "clicked", G_CALLBACK(pan_text_settings_dialog_cb), NULL);
+        pw = gtk_button_new_with_label("Color Settings"); /* COLORSET PATCH */
+        gtk_widget_set_halign(pw, GTK_ALIGN_START);
+        gtk_widget_set_size_request(pw, 110, -1);
+        gtk_grid_attach(GTK_GRID(pgrid_), pw, 0, row + 1, 1, 1);
+        g_signal_connect(pw, "clicked", G_CALLBACK(color_settings_dialog_cb), NULL);
+        row++;
+      }
+    }
+    row++;
+    row++;
+    row++;
+    row++;
+    row++;
   }
 
   //

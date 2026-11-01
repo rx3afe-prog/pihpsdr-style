@@ -113,6 +113,10 @@ void toolbar_restore_state(void) {
   GetPropI0("toolbar.floating", floating_toolbar);
   GetPropI0("toolbar.floating_x", floating_toolbar_x);
   GetPropI0("toolbar.floating_y", floating_toolbar_y);
+  {
+    extern void tb_css_apply(void); /* TBSTYLE PATCH */
+    tb_css_apply();
+  }
 }
 
 //
@@ -269,7 +273,7 @@ static gboolean toolbar_button_released_cb(GtkWidget *widget, GdkEventButton *ev
 
 void toolbar_show(int ypos) {
   if (toolbar_grid) {
-    gtk_layout_put(GTK_LAYOUT(fixed),  toolbar_grid, 0, ypos);
+    gtk_fixed_put(GTK_FIXED(fixed),  toolbar_grid, 0, ypos);
     gtk_widget_show_all(toolbar_grid);
   }
 }
@@ -323,6 +327,8 @@ static GtkWidget *toolbar_make_button(int row, int col, int width, int height, c
   gtk_container_add(GTK_CONTAINER(w), lbl);
   gpointer code = GINT_TO_POINTER(100 * row + col);
   gtk_widget_set_name(w, css);
+  GtkStyleContext *tbctx = gtk_widget_get_style_context(w); /* TBSTYLE PATCH */
+  gtk_style_context_add_class(tbctx, "tbbtn");
   gtk_widget_set_size_request (w, width, height);
   g_signal_connect(G_OBJECT(w), "button-press-event", G_CALLBACK(toolbar_button_press_cb), code);
   g_signal_connect(G_OBJECT(w), "button-release-event", G_CALLBACK(toolbar_button_released_cb), code);
@@ -394,7 +400,9 @@ static void toolbar_floating_rebuild_sliders(int height) {
   sliders_create_floating(floating_grid, height, slider_rows);
 }
 
+static int dbg_float_n = 0;
 void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide_button) {
+  fprintf(stderr, "FLOATCREATE #%d: kto-to sozdaet plavayushchuyu panel\n", ++dbg_float_n);
   const char *button_css;
   int target_width;
 
@@ -427,7 +435,8 @@ void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide
   floating_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   gtk_window_set_title(GTK_WINDOW(floating_window), "piHPSDR-Improved - Toolbar");
   gtk_window_set_transient_for(GTK_WINDOW(floating_window), GTK_WINDOW(top_window));
-  gtk_window_set_resizable(GTK_WINDOW(floating_window), FALSE);
+  /* ZSIZING: panel mozhno rastyagivat — grid rastetsya vmeste s oknom */
+  gtk_window_set_default_size(GTK_WINDOW(floating_window), 480, 240);
 
   if (floating_toolbar_x >= 0 && floating_toolbar_y >= 0) {
     gtk_window_move(GTK_WINDOW(floating_window), floating_toolbar_x, floating_toolbar_y);
@@ -445,20 +454,13 @@ void toolbar_create_floating(int height, GtkWidget *menu_button, GtkWidget *hide
   // ("menubutton"/"hidebutton") are left untouched so they keep their
   // distinct CSS styling.
   //
-  floating_menu_b = menu_button;
-  floating_hide_b = hide_button;
-  toolbar_reparent(floating_menu_b);
-  toolbar_reparent(floating_hide_b);
-  gtk_widget_set_size_request(floating_menu_b, target_width, height);
-  gtk_widget_set_size_request(floating_hide_b, target_width, height);
-  gtk_grid_attach(GTK_GRID(grid), floating_menu_b, 0, 0, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), floating_hide_b, 1, 0, 1, 1);
-  g_object_unref(floating_menu_b);
-  g_object_unref(floating_hide_b);
+  /* ZMHFIX3: M/H ne ispolzuem, zhivut MENU/BAR v titlebar */
+  if (GTK_IS_WIDGET(menu_button)) gtk_widget_hide(menu_button);
+  if (GTK_IS_WIDGET(hide_button)) gtk_widget_hide(hide_button);
 
   for (int j = 0; j < MAX_TB_BUTTONS; j++) {
     GtkWidget *w = toolbar_make_button(0, j, target_width, height, button_css);
-    gtk_grid_attach(GTK_GRID(grid), w, j % 2, j / 2 + 1, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), w, j % 2, j / 2, 1, 1);
   }
 
   gtk_container_add(GTK_CONTAINER(floating_window), grid);
@@ -495,16 +497,16 @@ void toolbar_destroy_floating(void) {
 
     if (floating_menu_b) {
       gtk_widget_set_size_request(floating_menu_b, MENU_WIDTH, VFO_HEIGHT / 2);
-      gtk_layout_put(GTK_LAYOUT(fixed), floating_menu_b, display_width[display_size] - MENU_WIDTH, 0);
-      gtk_widget_show(floating_menu_b);
+      gtk_fixed_put(GTK_FIXED(fixed), floating_menu_b, display_width[display_size] - MENU_WIDTH, 0);
+      gtk_widget_hide(floating_menu_b);
       g_object_unref(floating_menu_b);
       floating_menu_b = NULL;
     }
 
     if (floating_hide_b) {
       gtk_widget_set_size_request(floating_hide_b, MENU_WIDTH, VFO_HEIGHT / 2);
-      gtk_layout_put(GTK_LAYOUT(fixed), floating_hide_b, display_width[display_size] - MENU_WIDTH, VFO_HEIGHT / 2);
-      gtk_widget_show(floating_hide_b);
+      gtk_fixed_put(GTK_FIXED(fixed), floating_hide_b, display_width[display_size] - MENU_WIDTH, VFO_HEIGHT / 2);
+      gtk_widget_hide(floating_hide_b);
       g_object_unref(floating_hide_b);
       floating_hide_b = NULL;
     }

@@ -1,0 +1,1119 @@
+/* Copyright (C)
+*  2015 - John Melton, G0ORX/N6LYT
+*  2025 - Christoph van Wüllen, DL1YCF
+*
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
+*
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
+*
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*
+*/
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include "band.h"
+#include "bandstack.h"
+#include "filter.h"
+#include "json.h"
+#include "message.h"
+#include "mode.h"
+#include "property.h"
+#include "radio.h"
+#include "vfo.h"
+
+int xvtr_band = BANDS;
+
+char* outOfBand = "Out of band";
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief bandstack
+*/
+/* ----------------------------------------------------------------------------*/
+
+//
+// The "CTUN" flag and the ctun frequency have been added to all band-stacks.
+// By default, ctun is off and the ctun_frequency is zero.
+//
+// The var1/2 low/high frequencies were removed because they were nowhere used.
+//
+static BANDSTACK_ENTRY bandstack_entries136[] = {
+  {135800LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0},
+  {137100LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries472[] = {
+  {472100LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0},
+  {475100LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries160[] = {
+  {1810000LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0},
+  {1835000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {1845000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries80[] = {
+  {3501000LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0},
+  {3751000LL, 0, 0LL, modeLSB, filterF5, 2500, 0, 0},
+  {3850000LL, 0, 0LL, modeLSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries60_WRC15[] = {
+  {5352750LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {5357000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5363000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries60_OTHER[] = {
+  {5332000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}, // default channels for
+  {5348000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}, // 60m band, US regulations
+  {5358500LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5373000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5405000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries60_UK[] = {
+  {5261250LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}, // default channels for
+  {5280000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}, // 60m band, UK regulations
+  {5290250LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5302500LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5318000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5335500LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5356000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5368250LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5380000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5398250LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {5405000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries40[] = {
+  {7001000LL, 0, 0LL, modeCWL, filterF6, 2500, 0, 0},
+  {7152000LL, 0, 0LL, modeLSB, filterF5, 2500, 0, 0},
+  {7255000LL, 0, 0LL, modeLSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries30[] = {
+  {10120000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {10130000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {10140000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries20[] = {
+  {14010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {14150000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {14230000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {14336000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries17[] = {
+  {18068600LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {18125000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {18140000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries15[] = {
+  {21001000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {21255000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {21300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries12[] = {
+  {24895000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {24900000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {24910000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries10[] = {
+  {28010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {28300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {28400000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries6[] = {
+  {50010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {50125000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {50200000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries70[] = {
+  {70010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {70200000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {70250000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries144[] = {
+  {144010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {144200000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {144250000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {145600000LL, 0, 0LL, modeFMN, filterF0, 2500, 0, 0},
+  {145725000LL, 0, 0LL, modeFMN, filterF0, 2500, 0, 0},
+  {145900000LL, 0, 0LL, modeFMN, filterF0, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries220[] = {
+  {220010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {220200000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {220250000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries430[] = {
+  {430010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {432100000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {432300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries902[] = {
+  {902010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {902100000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {902300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries1240[] = {
+  {1240010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {1240100000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {1240300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries2300[] = {
+  {2300010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {2300100000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {2300300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entries3400[] = {
+  {3400010000LL, 0, 0LL, modeCWU, filterF6, 2500, 0, 0},
+  {3400100000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0},
+  {3400300000LL, 0, 0LL, modeUSB, filterF5, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entriesAIR[] = {
+  {118800000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {120000000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {121700000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {124100000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {126600000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {136500000LL, 0, 0LL, modeAM, filterF3, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entriesGEN[] = {
+  {909000LL,    0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {5975000LL,   0, 0LL, modeAM, filterF3, 2500, 0, 0},
+  {13845000LL,  0, 0LL, modeAM, filterF3, 2500, 0, 0}
+};
+
+static BANDSTACK_ENTRY bandstack_entriesWWV[] = {
+  {2500000LL,   0, 0LL, modeSAM, filterF3, 2500, 0, 0},
+  {5000000LL,   0, 0LL, modeSAM, filterF3, 2500, 0, 0},
+  {10000000LL,  0, 0LL, modeSAM, filterF3, 2500, 0, 0},
+  {15000000LL,  0, 0LL, modeSAM, filterF3, 2500, 0, 0},
+  {20000000LL,  0, 0LL, modeSAM, filterF3, 2500, 0, 0},
+  {25000000LL,  0, 0LL, modeSAM, filterF3, 2500, 0, 0}
+};
+
+static BANDSTACK bandstack160  = {3, 1, bandstack_entries160};
+static BANDSTACK bandstack80   = {3, 1, bandstack_entries80};
+static BANDSTACK bandstack60   = {5, 1, bandstack_entries60_OTHER};
+static BANDSTACK bandstack40   = {3, 1, bandstack_entries40};
+static BANDSTACK bandstack30   = {3, 1, bandstack_entries30};
+static BANDSTACK bandstack20   = {4, 1, bandstack_entries20};
+static BANDSTACK bandstack17   = {3, 1, bandstack_entries17};
+static BANDSTACK bandstack15   = {3, 1, bandstack_entries15};
+static BANDSTACK bandstack12   = {3, 1, bandstack_entries12};
+static BANDSTACK bandstack10   = {3, 1, bandstack_entries10};
+static BANDSTACK bandstack6    = {3, 1, bandstack_entries6};
+static BANDSTACK bandstack70   = {3, 1, bandstack_entries70};
+static BANDSTACK bandstack144  = {6, 1, bandstack_entries144};
+static BANDSTACK bandstack220  = {3, 1, bandstack_entries220};
+static BANDSTACK bandstack430  = {3, 1, bandstack_entries430};
+static BANDSTACK bandstack902  = {3, 1, bandstack_entries902};
+static BANDSTACK bandstack1240 = {3, 1, bandstack_entries1240};
+static BANDSTACK bandstack2300 = {3, 1, bandstack_entries2300};
+static BANDSTACK bandstack3400 = {3, 1, bandstack_entries3400};
+static BANDSTACK bandstackAIR  = {6, 1, bandstack_entriesAIR};
+static BANDSTACK bandstackGEN  = {3, 1, bandstack_entriesGEN};
+static BANDSTACK bandstackWWV  = {6, 1, bandstack_entriesWWV};
+static BANDSTACK bandstack136  = {2, 0, bandstack_entries136};
+static BANDSTACK bandstack472  = {2, 0, bandstack_entries472};
+
+/* --------------------------------------------------------------------------*/
+/**
+* @brief xvtr
+*/
+/* ----------------------------------------------------------------------------*/
+
+static BANDSTACK_ENTRY bandstack_entries_xvtr_0[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_1[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_2[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_3[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_4[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_5[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_6[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_7[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_8[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+static BANDSTACK_ENTRY bandstack_entries_xvtr_9[] = {
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0},
+  {0LL, 0, 0LL, modeUSB, filterF6, 2500, 0, 0}
+};
+
+static BANDSTACK bandstack_xvtr_0 = {3, 0, bandstack_entries_xvtr_0};
+static BANDSTACK bandstack_xvtr_1 = {3, 0, bandstack_entries_xvtr_1};
+static BANDSTACK bandstack_xvtr_2 = {3, 0, bandstack_entries_xvtr_2};
+static BANDSTACK bandstack_xvtr_3 = {3, 0, bandstack_entries_xvtr_3};
+static BANDSTACK bandstack_xvtr_4 = {3, 0, bandstack_entries_xvtr_4};
+static BANDSTACK bandstack_xvtr_5 = {3, 0, bandstack_entries_xvtr_5};
+static BANDSTACK bandstack_xvtr_6 = {3, 0, bandstack_entries_xvtr_6};
+static BANDSTACK bandstack_xvtr_7 = {3, 0, bandstack_entries_xvtr_7};
+static BANDSTACK bandstack_xvtr_8 = {3, 0, bandstack_entries_xvtr_8};
+static BANDSTACK bandstack_xvtr_9 = {3, 0, bandstack_entries_xvtr_9};
+
+// *INDENT-OFF*
+static BAND bands[BANDS + XVTRS] = {
+  {"136kHz", &bandstack136,     0, 0, 0, 0, 0, 53.0,     135700LL,     137800LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"472kHz", &bandstack472,     0, 0, 0, 0, 0, 53.0,     472000LL,     479000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"160",    &bandstack160,     0, 0, 0, 0, 0, 53.0,    1800000LL,    2000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"80",     &bandstack80,      0, 0, 0, 0, 0, 53.0,    3500000LL,    3800000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"60",     &bandstack60,      0, 0, 0, 0, 0, 53.0,    5250000LL,    5510000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"40",     &bandstack40,      0, 0, 0, 0, 0, 53.0,    7000000LL,    7200000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"30",     &bandstack30,      0, 0, 0, 0, 0, 53.0,   10100000LL,   10150000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"20",     &bandstack20,      0, 0, 0, 0, 0, 53.0,   14000000LL,   14350000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"17",     &bandstack17,      0, 0, 0, 0, 0, 53.0,   18068000LL,   18168000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"15",     &bandstack15,      0, 0, 0, 0, 0, 53.0,   21000000LL,   21450000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"12",     &bandstack12,      0, 0, 0, 0, 0, 53.0,   24890000LL,   24990000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"10",     &bandstack10,      0, 0, 0, 0, 0, 53.0,   28000000LL,   29700000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"6",      &bandstack6,       0, 0, 0, 0, 0, 53.0,   50000000LL,   54000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"4",      &bandstack70,      0, 0, 0, 0, 0, 53.0,   70000000LL,   70500000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"144",    &bandstack144,     0, 0, 0, 0, 0, 53.0,  144000000LL,  148000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"220",    &bandstack220,     0, 0, 0, 0, 0, 53.0,  220000000LL,  224980000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"430",    &bandstack430,     0, 0, 0, 0, 0, 53.0,  420000000LL,  450000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"902",    &bandstack902,     0, 0, 0, 0, 0, 53.0,  902000000LL,  928000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"1240",   &bandstack1240,    0, 0, 0, 0, 0, 53.0, 1240000000LL, 1300000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"2300",   &bandstack2300,    0, 0, 0, 0, 0, 53.0, 2300000000LL, 2450000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"3400",   &bandstack3400,    0, 0, 0, 0, 0, 53.0, 3400000000LL, 3410000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"AIR",    &bandstackAIR,     0, 0, 0, 0, 0, 53.0,  108000000LL,  137000000LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"WWV",    &bandstackWWV,     0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"GEN",    &bandstackGEN,     0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 0, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  // XVTRS
+  {"",       &bandstack_xvtr_0, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_1, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_2, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_3, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_4, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_5, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_6, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_7, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_8, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40},
+  {"",       &bandstack_xvtr_9, 0, 0, 0, 0, 0, 53.0,          0LL,          0LL, 0LL, 0LL, 1, 0, 0, 0, 0, 0, -140, -40, 20, -140, -40}
+};
+// *INDENT-ON*
+
+static CHANNEL band_channels_60m_UK[UK_CHANNEL_ENTRIES] = {
+  { .frequency = 5261250LL, .width = 5500LL },
+  { .frequency = 5280000LL, .width = 8000LL },
+  { .frequency = 5290250LL, .width = 3500LL },
+  { .frequency = 5302500LL, .width = 9000LL },
+  { .frequency = 5318000LL, .width = 10000LL },
+  { .frequency = 5335500LL, .width = 5000LL },
+  { .frequency = 5356000LL, .width = 4000LL },
+  { .frequency = 5368250LL, .width = 12500LL },
+  { .frequency = 5380000LL, .width = 4000LL },
+  { .frequency = 5398250LL, .width = 6500LL },
+  { .frequency = 5405000LL, .width = 3000LL }
+};
+
+//
+// Many countries have now allowed ham radio on the 60m
+// band based on WRC15. There is a single 15 kHz wide "channel"
+//
+static CHANNEL band_channels_60m_WRC15[WRC15_CHANNEL_ENTRIES] =
+{{ .frequency = 5359000LL, .width = 15000LL }};
+
+
+static CHANNEL band_channels_60m_OTHER[OTHER_CHANNEL_ENTRIES] = {
+  { .frequency = 5332000LL, .width = 2800LL },
+  { .frequency = 5348000LL, .width = 2800LL },
+  { .frequency = 5359000LL, .width = 15000LL },  // FCC 25-60, IIIB1, makes this a "WRC15 channel".
+  { .frequency = 5373000LL, .width = 2800LL },
+  { .frequency = 5405000LL, .width = 2800LL }
+};
+
+//
+// channel_entires and band_channels_60m are used in the RX panadapter
+// to mark the "channels"
+//
+int channel_entries;
+CHANNEL *band_channels_60m;
+
+//
+// ---------------------------------------------------------------------------
+// Issue 6: runtime 60m band plan.
+//
+// The compiled-in arrays above are the fallback defaults. At startup they are
+// copied into the runtime arrays below, which are then optionally overridden
+// from "bandplan.json". Each segment may carry a text label and an RGBA fill
+// colour; a colour with alpha <= 0 means "use the theme's pan_60m colour".
+// radio_change_region() points channel_entries/band_channels_60m at the
+// runtime array for the selected region.
+// ---------------------------------------------------------------------------
+//
+#define BANDPLAN_FILE     "bandplan.json"
+#define MAX_60M_SEGMENTS  64
+
+static CHANNEL rt_60m_uk[MAX_60M_SEGMENTS];      static int rt_60m_uk_n = 0;
+static CHANNEL rt_60m_other[MAX_60M_SEGMENTS];   static int rt_60m_other_n = 0;
+static CHANNEL rt_60m_wrc15[MAX_60M_SEGMENTS];   static int rt_60m_wrc15_n = 0;
+
+//
+// Copy a compiled-in region into its runtime array.
+//
+static void copy_builtin_region(CHANNEL *dst, int *dstn, const CHANNEL *src, int n) {
+  int c = 0;
+
+  for (int i = 0; i < n && i < MAX_60M_SEGMENTS; i++) {
+    dst[c++] = src[i];
+  }
+
+  *dstn = c;
+}
+
+//
+// Reset all runtime regions to the compiled-in defaults.
+//
+static void load_builtin_bandplan(void) {
+  copy_builtin_region(rt_60m_uk,    &rt_60m_uk_n,    band_channels_60m_UK,    UK_CHANNEL_ENTRIES);
+  copy_builtin_region(rt_60m_other, &rt_60m_other_n, band_channels_60m_OTHER, OTHER_CHANNEL_ENTRIES);
+  copy_builtin_region(rt_60m_wrc15, &rt_60m_wrc15_n, band_channels_60m_WRC15, WRC15_CHANNEL_ENTRIES);
+}
+
+//
+// Read one segment array ("UK"/"OTHER"/"WRC15") from a JSON "regions" object
+// into the given runtime array. Leaves the array untouched (returns 0) when
+// the region key is missing, so unspecified regions keep their defaults.
+//
+static int load_region_from_json(const JsonValue *regions, const char *name,
+                                  CHANNEL *dst, int *dstn) {
+  const JsonValue *arr = json_object_get(regions, name);
+
+  if (arr == NULL || arr->type != JSON_ARRAY) { return 0; }
+
+  int c = 0;
+  const JsonValue *e;
+
+  JSON_FOREACH(e, arr) {
+    if (c >= MAX_60M_SEGMENTS) { break; }
+
+    if (e->type != JSON_OBJECT) { continue; }
+
+    CHANNEL ch;
+    memset(&ch, 0, sizeof(ch));
+    ch.frequency = (long long) json_as_number(json_object_get(e, "frequency"), 0.0);
+    ch.width     = (long long) json_as_number(json_object_get(e, "width"),     0.0);
+    snprintf(ch.label, sizeof(ch.label), "%s",
+             json_as_string(json_object_get(e, "label"), ""));
+    // "access": "TX" (default) or "RX" (receive-only, never transmit)
+    ch.rx_only = (strcasecmp(json_as_string(json_object_get(e, "access"), "TX"), "RX") == 0);
+
+    const JsonValue *col = json_object_get(e, "colour");
+
+    if (col != NULL && col->type == JSON_ARRAY) {
+      const JsonValue *cc;
+      int i = 0;
+
+      JSON_FOREACH(cc, col) {
+        if (i < 4) { ch.colour[i] = (float) json_as_number(cc, ch.colour[i]); }
+
+        i++;
+      }
+    }
+
+    const JsonValue *lcol = json_object_get(e, "label_colour");
+
+    if (lcol != NULL && lcol->type == JSON_ARRAY) {
+      const JsonValue *cc;
+      int i = 0;
+
+      JSON_FOREACH(cc, lcol) {
+        if (i < 4) { ch.label_colour[i] = (float) json_as_number(cc, ch.label_colour[i]); }
+
+        i++;
+      }
+    }
+
+    dst[c++] = ch;
+  }
+
+  *dstn = c;
+  return 1;
+}
+
+//
+// Parse "bandplan.json" over the (already loaded) built-in defaults. Accepts
+// either a top-level object of regions, or { "regions": { ... } }.
+// Returns 1 if at least one region was read, 0 otherwise.
+//
+static int load_bandplan_from_json(const char *path) {
+  JsonValue *root = json_parse_file(path);
+
+  if (root == NULL) { return 0; }
+
+  const JsonValue *regions = root;
+
+  if (root->type == JSON_OBJECT) {
+    const JsonValue *r = json_object_get(root, "regions");
+
+    if (r != NULL) { regions = r; }
+  }
+
+  if (regions == NULL || regions->type != JSON_OBJECT) {
+    json_free(root);
+    return 0;
+  }
+
+  int any = 0;
+  any |= load_region_from_json(regions, "UK",    rt_60m_uk,    &rt_60m_uk_n);
+  any |= load_region_from_json(regions, "OTHER", rt_60m_other, &rt_60m_other_n);
+  any |= load_region_from_json(regions, "WRC15", rt_60m_wrc15, &rt_60m_wrc15_n);
+  json_free(root);
+  return any;
+}
+
+//
+// Write one region array into the default JSON file.
+//
+static void write_region_json(FILE *f, const char *name, const CHANNEL *ch, int n, int last) {
+  fprintf(f, "    \"%s\": [\n", name);
+
+  for (int i = 0; i < n; i++) {
+    fprintf(f,
+            "      {\"frequency\": %lld, \"width\": %lld, \"access\": \"%s\", \"label\": \"%s\", \"colour\": [%.3f, %.3f, %.3f, %.3f], \"label_colour\": [%.3f, %.3f, %.3f, %.3f]}%s\n",
+            ch[i].frequency, ch[i].width, ch[i].rx_only ? "RX" : "TX", ch[i].label,
+            ch[i].colour[0], ch[i].colour[1], ch[i].colour[2], ch[i].colour[3],
+            ch[i].label_colour[0], ch[i].label_colour[1], ch[i].label_colour[2], ch[i].label_colour[3],
+            (i == n - 1) ? "" : ",");
+  }
+
+  fprintf(f, "    ]%s\n", last ? "" : ",");
+}
+
+//
+// Create a default "bandplan.json" from the compiled-in 60m channels so the
+// operator has a ready-to-edit template.
+//
+static void write_default_bandplan_file(const char *path) {
+  FILE *f = fopen(path, "w");
+
+  if (f == NULL) {
+    t_print("bandplan: could not write default %s\n", path);
+    return;
+  }
+
+  fprintf(f, "{\n");
+  fprintf(f, "  \"_comment\": \"piHPSDR 60m band plan. frequency/width are in Hz. 'access' is \\\"TX\\\" (transmit allowed, default) or \\\"RX\\\" (receive-only, e.g. VOLMET; TX is never allowed). 'label' is drawn on each segment; 'colour' is the [red, green, blue, alpha] fill in 0.0-1.0 (alpha 0 means use the theme's pan_60m colour); 'label_colour' is the [red, green, blue, alpha] label text colour in 0.0-1.0 (alpha 0 means use the theme's pan_text colour). Edit and use the Reload menu button to apply.\",\n");
+  fprintf(f, "  \"regions\": {\n");
+  write_region_json(f, "UK",    rt_60m_uk,    rt_60m_uk_n,    0);
+  write_region_json(f, "OTHER", rt_60m_other, rt_60m_other_n, 0);
+  write_region_json(f, "WRC15", rt_60m_wrc15, rt_60m_wrc15_n, 1);
+  fprintf(f, "  }\n}\n");
+  fclose(f);
+}
+
+//
+// One-time startup initialisation: load bandplan.json if present, otherwise
+// write a default one generated from the built-in 60m channels.
+//
+void bandplan_init(void) {
+  load_builtin_bandplan();
+
+  FILE *test = fopen(BANDPLAN_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_bandplan_from_json(BANDPLAN_FILE)) {
+      load_builtin_bandplan();
+      t_print("bandplan_init: %s could not be parsed, using built-in 60m channels\n", BANDPLAN_FILE);
+    } else {
+      t_print("bandplan_init: loaded 60m band plan from %s\n", BANDPLAN_FILE);
+    }
+  } else {
+    write_default_bandplan_file(BANDPLAN_FILE);
+    t_print("bandplan_init: wrote default %s\n", BANDPLAN_FILE);
+  }
+}
+
+//
+// Re-read bandplan.json. The caller (radio_reload_json_configs) then invokes
+// radio_change_region() to re-point channel_entries/band_channels_60m.
+//
+void bandplan_reload(void) {
+  load_builtin_bandplan();
+
+  FILE *test = fopen(BANDPLAN_FILE, "r");
+
+  if (test != NULL) {
+    fclose(test);
+
+    if (!load_bandplan_from_json(BANDPLAN_FILE)) {
+      load_builtin_bandplan();
+      t_print("bandplan_reload: %s could not be parsed, using built-in 60m channels\n", BANDPLAN_FILE);
+    } else {
+      t_print("bandplan_reload: loaded 60m band plan from %s\n", BANDPLAN_FILE);
+    }
+  }
+}
+
+static RX2_BAND rx2_bands[BANDS + XVTRS];
+
+RX2_BAND *band_get_rx2(int b) {
+  return &rx2_bands[b];
+}
+
+BANDSTACK *bandstack_get_bandstack(int band) {
+  return bands[band].bandstack;
+}
+
+
+BAND *band_get_band(int b) {
+  BAND *band = &bands[b];
+  return band;
+}
+
+void radio_change_region(int r) {
+  region = r;
+
+  switch (region) {
+  case REGION_UK:
+    channel_entries = rt_60m_uk_n;
+    band_channels_60m = &rt_60m_uk[0];
+    bandstack60.entries = UK_CHANNEL_ENTRIES;
+    bandstack60.current_entry = 0;
+    bandstack60.entry = bandstack_entries60_UK;
+    break;
+
+  case REGION_OTHER:
+    channel_entries = rt_60m_other_n;
+    band_channels_60m = &rt_60m_other[0];
+    bandstack60.entries = OTHER_CHANNEL_ENTRIES;
+    bandstack60.current_entry = 0;
+    bandstack60.entry = bandstack_entries60_OTHER;
+    break;
+
+  case REGION_WRC15:
+    channel_entries = rt_60m_wrc15_n;
+    band_channels_60m = &rt_60m_wrc15[0];
+    bandstack60.entries = WRC15_CHANNEL_ENTRIES;
+    bandstack60.current_entry = 0;
+    bandstack60.entry = bandstack_entries60_WRC15;
+    break;
+  }
+}
+
+void band_save_state(void) {
+  for (int b = 0; b < BANDS + XVTRS; b++) {
+    //
+    // Skip non-assigned transverter bands
+    //
+    if (strlen(bands[b].title) == 0) { continue; }
+
+    if (b >= BANDS) {
+      SetPropI1("band.%d.frequencyLO", b,        bands[b].frequencyLO);
+      SetPropI1("band.%d.errorLO", b,            bands[b].errorLO);
+      SetPropI1("band.%d.gaincalib", b,          bands[b].gaincalib);
+    }
+
+    SetPropS1("band.%d.title", b,              bands[b].title);
+    SetPropI1("band.%d.frequencyMin", b,       bands[b].frequencyMin);
+    SetPropI1("band.%d.frequencyMax", b,       bands[b].frequencyMax);
+    SetPropI1("band.%d.disablePA", b,          bands[b].disablePA);
+    SetPropI1("band.%d.current", b,            bands[b].bandstack->current_entry);
+    SetPropI1("band.%d.preamp", b,             bands[b].preamp);
+    SetPropI1("band.%d.dither", b,             bands[b].dither);
+    SetPropI1("band.%d.panhigh", b,            bands[b].panhigh);
+    SetPropI1("band.%d.panlow", b,             bands[b].panlow);
+    SetPropI1("band.%d.panstep", b,            bands[b].panstep);
+    SetPropI1("band.%d.wfhigh", b,             bands[b].wfhigh);
+    SetPropI1("band.%d.wflow", b,              bands[b].wflow);
+
+    if (have_rx_att) {
+      SetPropI1("band.%d.attenuation", b,        bands[b].attenuation);
+    }
+
+    if (have_rx_gain) {
+      SetPropF1("band.%d.gain", b,               bands[b].gain);
+    }
+
+    SetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
+    SetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
+    SetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
+    SetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
+    SetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
+    SetPropI1("band.%d.OCtx", b,               bands[b].OCtx);
+
+    for (int stack = 0; stack < bands[b].bandstack->entries; stack++) {
+      BANDSTACK_ENTRY *entry = bands[b].bandstack->entry;
+      entry += stack;
+      SetPropI2("band.%d.stack.%d.a", b, stack,              entry->frequency);
+      SetPropI2("band.%d.stack.%d.mode", b,                  stack, entry->mode);
+      SetPropI2("band.%d.stack.%d.filter", b,                stack, entry->filter);
+      SetPropI2("band.%d.stack.%d.ctun", b, stack,           entry->ctun);
+      SetPropI2("band.%d.stack.%d.c", b, stack,              entry->ctun_frequency);
+      SetPropI2("band.%d.stack.%d.deviation", b, stack,      entry->deviation);
+      SetPropI2("band.%d.stack.%d.ctcss_enabled", b, stack,  entry->ctcss_enabled);
+      SetPropI2("band.%d.stack.%d.ctcss", b, stack,          entry->ctcss);
+    }
+
+    const RX2_BAND *rx2 = &rx2_bands[b];
+
+    if (rx2->valid) {
+      SetPropI1("band.%d.rx2.bandstack", b,      rx2->bandstack);
+      SetPropI1("band.%d.rx2.a", b,              rx2->frequency);
+      SetPropI1("band.%d.rx2.ctun", b,           rx2->ctun);
+      SetPropI1("band.%d.rx2.c", b,              rx2->ctun_frequency);
+      SetPropI1("band.%d.rx2.mode", b,           rx2->mode);
+      SetPropI1("band.%d.rx2.filter", b,         rx2->filter);
+      SetPropI1("band.%d.rx2.deviation", b,      rx2->deviation);
+    }
+
+    if (rx2->levels_valid) {
+      SetPropI1("band.%d.rx2.panhigh", b,        rx2->panhigh);
+      SetPropI1("band.%d.rx2.panlow", b,         rx2->panlow);
+      SetPropI1("band.%d.rx2.panstep", b,        rx2->panstep);
+      SetPropI1("band.%d.rx2.wfhigh", b,         rx2->wfhigh);
+      SetPropI1("band.%d.rx2.wflow", b,          rx2->wflow);
+      SetPropI1("band.%d.rx2.attenuation", b,    rx2->attenuation);
+      SetPropF1("band.%d.rx2.gain", b,           rx2->gain);
+    }
+  }
+}
+
+void band_restore_state(void) {
+  for (int b = 0; b < BANDS + XVTRS; b++) {
+    //
+    // The No. 1 problem for new HermesLite users is "no RF output",
+    // because they forgot to execute the PA calibration menu. This
+    // results in a no-show, because the calibrated value (39-40 dB) is
+    // so much less than the default value (53 dB). So for HermesLite-II,
+    // we change the default to 40.5 dB. This will be overwritten from
+    // the props file, but for a first-time start, one gets something
+    // reasonable here.
+    //
+    if (device == DEVICE_HERMES_LITE2) {
+      bands[b].pa_calibration = 40.5;
+    }
+
+    if (have_rx_gain) {
+      bands[b].gain = rx_gain_calibration;
+    }
+
+    //
+    // For the "normal" (non-XVTR) bands, do not change the title,
+    // and do not fill in XVTR-specific data. There is no GUI for these bands
+    // to change frequencyMin, frequencyMax, and disablePA, but
+    // we allow users to change this by hand-editing the props file.
+    //
+    if (b >= BANDS) {
+      GetPropS1("band.%d.title", b,            bands[b].title);
+      GetPropI1("band.%d.frequencyLO", b,      bands[b].frequencyLO);
+      GetPropI1("band.%d.errorLO", b,          bands[b].errorLO);
+      GetPropI1("band.%d.gaincalib", b,        bands[b].gaincalib);
+    }
+
+    const long long def_min = bands[b].frequencyMin;
+    const long long def_max = bands[b].frequencyMax;
+    GetPropI1("band.%d.frequencyMin", b,       bands[b].frequencyMin);
+    GetPropI1("band.%d.frequencyMax", b,       bands[b].frequencyMax);
+
+    //
+    // Older props files saved the previous (narrower) 60m limits, which would
+    // hide the VOLMET channels. Widen (never narrow) the 60m band to the
+    // compiled-in limits.
+    //
+    if (b == band60) {
+      if (bands[b].frequencyMin > def_min) { bands[b].frequencyMin = def_min; }
+
+      if (bands[b].frequencyMax < def_max) { bands[b].frequencyMax = def_max; }
+    }
+
+    GetPropI1("band.%d.disablePA", b,          bands[b].disablePA);
+    GetPropI1("band.%d.current", b,            bands[b].bandstack->current_entry);
+    GetPropI1("band.%d.preamp", b,             bands[b].preamp);
+    GetPropI1("band.%d.dither", b,             bands[b].dither);
+    GetPropI1("band.%d.panhigh", b,            bands[b].panhigh);
+    GetPropI1("band.%d.panlow", b,             bands[b].panlow);
+    GetPropI1("band.%d.panstep", b,            bands[b].panstep);
+    //
+    // Waterfall levels used to be stored per receiver. Use these values as
+    // defaults, such that old props files keep their settings on all bands.
+    //
+    GetPropI1("receiver.%d.waterfall_high", 0, bands[b].wfhigh);
+    GetPropI1("receiver.%d.waterfall_low", 0,  bands[b].wflow);
+    GetPropI1("band.%d.wfhigh", b,             bands[b].wfhigh);
+    GetPropI1("band.%d.wflow", b,              bands[b].wflow);
+
+    if (have_rx_att) {
+      GetPropI1("band.%d.attenuation", b,      bands[b].attenuation);
+    }
+
+    if (have_rx_gain) {
+      GetPropF1("band.%d.gain", b,             bands[b].gain);
+    }
+
+    GetPropI1("band.%d.alexRxAntenna", b,      bands[b].RxAntenna);
+    GetPropI1("band.%d.alexTxAntenna", b,      bands[b].TxAntenna);
+    GetPropI1("band.%d.alexAttenuation", b,    bands[b].alexAttenuation);
+    GetPropF1("band.%d.pa_calibration", b,     bands[b].pa_calibration);
+    GetPropI1("band.%d.OCrx", b,               bands[b].OCrx);
+    GetPropI1("band.%d.OCtx", b,               bands[b].OCtx);
+
+    for (int stack = 0; stack < bands[b].bandstack->entries; stack++) {
+      BANDSTACK_ENTRY *entry = bands[b].bandstack->entry;
+      entry += stack;
+      GetPropI2("band.%d.stack.%d.a", b, stack,              entry->frequency);
+      GetPropI2("band.%d.stack.%d.mode", b,                  stack, entry->mode);
+      GetPropI2("band.%d.stack.%d.filter", b,                stack, entry->filter);
+      GetPropI2("band.%d.stack.%d.ctun", b, stack,           entry->ctun);
+      GetPropI2("band.%d.stack.%d.c", b, stack,              entry->ctun_frequency);
+      GetPropI2("band.%d.stack.%d.deviation", b, stack,      entry->deviation);
+      GetPropI2("band.%d.stack.%d.ctcss_enabled", b, stack,  entry->ctcss_enabled);
+      GetPropI2("band.%d.stack.%d.ctcss", b, stack,          entry->ctcss);
+    }
+
+    //
+    // RX2 per-band memory. A band counts as "visited by RX2" if
+    // its frequency has been stored.
+    //
+    RX2_BAND *rx2 = &rx2_bands[b];
+    rx2->valid = 0;
+    rx2->frequency = -1;
+    GetPropI1("band.%d.rx2.a", b,              rx2->frequency);
+
+    if (rx2->frequency >= 0) {
+      rx2->valid = 1;
+      GetPropI1("band.%d.rx2.bandstack", b,    rx2->bandstack);
+      GetPropI1("band.%d.rx2.ctun", b,         rx2->ctun);
+      GetPropI1("band.%d.rx2.c", b,            rx2->ctun_frequency);
+      GetPropI1("band.%d.rx2.mode", b,         rx2->mode);
+      GetPropI1("band.%d.rx2.filter", b,       rx2->filter);
+      GetPropI1("band.%d.rx2.deviation", b,    rx2->deviation);
+    }
+
+    rx2->levels_valid = 0;
+    rx2->panstep = -1;
+    rx2->wfhigh = -40;
+    rx2->wflow = -140;
+    GetPropI1("receiver.%d.waterfall_high", 1, rx2->wfhigh);
+    GetPropI1("receiver.%d.waterfall_low", 1,  rx2->wflow);
+    GetPropI1("band.%d.rx2.panstep", b,        rx2->panstep);
+
+    if (rx2->panstep >= 0) {
+      rx2->levels_valid = 1;
+      GetPropI1("band.%d.rx2.panhigh", b,      rx2->panhigh);
+      GetPropI1("band.%d.rx2.panlow", b,       rx2->panlow);
+      GetPropI1("band.%d.rx2.wfhigh", b,       rx2->wfhigh);
+      GetPropI1("band.%d.rx2.wflow", b,        rx2->wflow);
+      GetPropI1("band.%d.rx2.attenuation", b,  rx2->attenuation);
+      GetPropF1("band.%d.rx2.gain", b,         rx2->gain);
+    }
+  }
+
+  for (int b = 0; b < BANDS + XVTRS; b++) {
+    //
+    // Some sanity checks
+    //
+    if (bands[b].bandstack->current_entry >= bands[b].bandstack->entries) {
+      bands[b].bandstack->current_entry = 0;
+    }
+
+    if (protocol == ORIGINAL_PROTOCOL || protocol == NEW_PROTOCOL) {
+      if (bands[b].TxAntenna > 2 || bands[b].TxAntenna < 0) {
+        bands[b].TxAntenna = 0;
+      }
+
+      if (bands[b].pa_calibration < 38.8) {
+        bands[b].pa_calibration = 38.8;
+      }
+
+      if (bands[b].pa_calibration > 70.0) {
+        bands[b].pa_calibration = 70.0;
+      }
+    }
+  }
+}
+
+int get_band_from_frequency(long long f) {
+  int b;
+  int found = -1;
+
+  //
+  // do not search non-xvtr bands if frequency not supported
+  // by the radio
+  //
+  if (f >= radio->frequency_min && f <= radio->frequency_max) {
+    for (b = 0; b < BANDS; b++) {
+      const BAND *band = band_get_band(b);
+
+      if (strlen(band->title) > 0) {
+        if (f >= band->frequencyMin && f <= band->frequencyMax) {
+          found = b;
+          break;
+        }
+      }
+    }
+  }
+
+  //
+  // start a new search on the xvtr bands such that if an xvtr
+  // band produces a match, it will take precedence
+  //
+  for (b = BANDS; b < BANDS + XVTRS; b++) {
+    const BAND *band = band_get_band(b);
+
+    if (strlen(band->title) > 0) {
+      if (f >= band->frequencyMin && f <= band->frequencyMax) {
+        found = b;
+        break;
+      }
+    }
+  }
+
+  //
+  // If no band has been found:
+  //  - use bandWWV if the frequency is (close to) 2.5, 5.0, 10.0, 15.0, 20.0, or 25.0 MHz
+  //    (WWV broadcasts on 25 MHz on an experimental basis)
+  //
+  //  - use bandGEN if anything else does not give a match.
+  //    Note that frequencies in the 6m band result in bandGEN
+  //    if the radio does not support frequencies > 30 MHz.
+  //
+  if (found < 0) {
+    found = bandGen;
+
+    if (llabs(f -  2500000LL) <= 1000) { found = bandWWV; }
+
+    if (llabs(f -  5000000LL) <= 1000) { found = bandWWV; }
+
+    if (llabs(f - 10000000LL) <= 1000) { found = bandWWV; }
+
+    if (llabs(f - 15000000LL) <= 1000) { found = bandWWV; }
+
+    if (llabs(f - 20000000LL) <= 1000) { found = bandWWV; }
+
+    if (llabs(f - 25000000LL) <= 1000) { found = bandWWV; }
+  }
+
+  return found;
+}
+
+#if 0
+char* getFrequencyInfo(long long frequency, int filter_low, int filter_high) {
+  char* result = outOfBand;
+  int i;
+  long long flow = frequency + (long long)filter_low;
+  long long fhigh = frequency + (long long)filter_high;
+  int b;
+
+  for (b = 0; b < BANDS + XVTRS; b++) {
+    BAND *band = band_get_band(b);
+
+    if (strlen(band->title) > 0) {
+      if (flow >= band->frequencyMin && fhigh <= band->frequencyMax) {
+        if (b == band60) {
+          for (i = 0; i < channel_entries; i++) {
+            long long low_freq = band_channels_60m[i].frequency - (band_channels_60m[i].width / (long long)2);
+            long long hi_freq = band_channels_60m[i].frequency + (band_channels_60m[i].width / (long long)2);
+
+            if (flow >= low_freq && fhigh <= hi_freq) {
+              result = band->title;
+              break;
+            }
+          }
+        } else {
+          result = band->title;
+          break;
+        }
+      }
+    }
+  }
+
+  t_print("%s: %lld H7z ==>  %s\n", __func__, frequency, result);
+  return result;
+}
+
+#endif
+
+int TransmitAllowed(void) {
+  int result;
+  long long txfreq, flow, fhigh;
+  int txb, txvfo, txmode;
+  const BAND *txband;
+
+  //
+  // If there is no transmitter, we cannot transmit
+  //
+  if (!can_transmit) { return 0; }
+
+  //
+  // quick return if out-of-band TX is enabled, except on 60m where
+  // receive-only channels must still be protected (checked below)
+  //
+  txvfo = vfo_get_tx_vfo();
+  txb = vfo[txvfo].band;
+
+  if (tx_out_of_band_allowed && txb != band60) { return 1; }
+
+  if (!tx_out_of_band_allowed && (txb == bandGen || txb  == bandWWV || txb  == bandAIR)) { return 0; }
+
+  //
+  // Determine the edges of our band
+  // and the edges of our TX signal
+  //
+  txband = band_get_band(vfo[txvfo].band);
+  txfreq = vfo_get_tx_freq();
+  txmode = vfo_get_tx_mode();
+
+  switch (txmode) {
+  case modeCWU:
+    flow = fhigh = txfreq;
+    break;
+
+  case modeCWL:
+    flow = fhigh = txfreq;
+    break;
+
+  default:
+    flow = txfreq + transmitter->filter_low;
+    fhigh = txfreq + transmitter->filter_high;
+    break;
+  }
+
+  if (txb == band60) {
+    //
+    // For 60m band, ensure signal is within one of the "channels", and
+    // that this channel is not receive-only. If out-of-band TX is enabled,
+    // only the receive-only channels are protected.
+    //
+    result = tx_out_of_band_allowed ? 1 : 0;
+
+    for (int i = 0; i < channel_entries; i++) {
+      long long low_freq = band_channels_60m[i].frequency - (band_channels_60m[i].width / (long long)2);
+      long long hi_freq = band_channels_60m[i].frequency + (band_channels_60m[i].width / (long long)2);
+
+      if (tx_out_of_band_allowed) {
+        // any overlap with a receive-only channel blocks TX
+        if (band_channels_60m[i].rx_only && fhigh >= low_freq && flow <= hi_freq) {
+          result = 0;
+          break;
+        }
+      } else if (flow >= low_freq && fhigh <= hi_freq) {
+        result = !band_channels_60m[i].rx_only;
+        break;
+      }
+    }
+  } else {
+    //
+    // For other bands, return true if signal within band
+    //
+    result = flow >= txband->frequencyMin && fhigh <= txband->frequencyMax;
+  }
+
+  return result;
+}
+
+void band_plus(int id) {
+  int b = vfo[id].band;
+  int found = 0;
+
+  while (!found) {
+    const BAND *band;
+    b++;
+
+    if (b >= BANDS + XVTRS) { b = 0; }
+
+    band = (BAND*)band_get_band(b);
+
+    //
+    // a) skip non-assigned transverter bands.
+    // b) skip bands where the band failed (frequency
+    //    of the "new" bandstack is outside the radio range,
+    //    Example: WWV band on AdalmPluto)
+    //
+    if (strlen(band->title) > 0) {
+      vfo_id_band_changed(id, b);
+
+      if (vfo[id].band == b) { found = 1; }
+    }
+  }
+}
+
+void band_minus(int id) {
+  int b = vfo[id].band;
+  int found = 0;
+
+  while (!found) {
+    const BAND *band;
+    b--;
+
+    if (b < 0) { b = BANDS + XVTRS - 1; }
+
+    band = (BAND*)band_get_band(b);
+
+    //
+    // a) skip non-assigned transverter bands.
+    // b) skip bands where the band failed (frequency
+    //    of the "new" bandstack is outside the radio range,
+    //    Example: WWV band on AdalmPluto)
+    //
+    if (strlen(band->title) > 0) {
+      vfo_id_band_changed(id, b);
+
+      if (vfo[id].band == b) { found = 1; }
+    }
+  }
+}

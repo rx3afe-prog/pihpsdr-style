@@ -231,7 +231,7 @@ void pa_menu(GtkWidget *parent) {
   int col;
   int row = 0;
   which_container = PA_CONTAINER;
-  GtkWidget *close_b = gtk_button_new_with_label("Close");
+  GtkWidget *close_b = gtk_button_new_with_label("Закрыть");
   gtk_widget_set_name(close_b, "close_button");
   g_signal_connect (close_b, "button-press-event", G_CALLBACK(close_cb), NULL);
   gtk_grid_attach(GTK_GRID(grid), close_b, 0, row, 2, 1);
