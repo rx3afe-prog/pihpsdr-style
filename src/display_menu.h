@@ -19,4 +19,5 @@
 
 #include <gtk/gtk.h>
 extern void display_menu(GtkWidget *parent);
+extern void display_popup_menu(GtkWidget *parent);
 extern int display_menu_update_levels(gpointer data);

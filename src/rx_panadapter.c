@@ -18,6 +18,7 @@
 */
 
 #include <gtk/gtk.h>
+#include "display_menu.h"
 double panadapter_line_width = 1.0;
 double pan_grid_width = 1.0;
 GdkRGBA pan_grid_custom_color = { 0.5, 0.5, 0.5, 1.0 };
@@ -38,7 +39,6 @@ GdkRGBA vfo_dial_custom_color = { 0.0, 1.0, 0.0, 1.0 };
 double vfo_dial_size_scale = 1.0;
 int tb_use_custom = 0;
 GdkRGBA tb_custom_color = { 1.0, 1.0, 1.0, 1.0 };
-double tb_brightness = 1.0;
 double tb_font_size = 15.0;
 int vfo_status_use_custom = 0;        /* PSTEXT PATCH */
 GdkRGBA vfo_status_color = { 1.0, 1.0, 1.0, 1.0 };
@@ -123,6 +123,7 @@ panadapter_draw_cb (GtkWidget *widget,
 
 static gboolean panadapter_button_press_event_cb(GtkWidget *widget, GdkEventButton *event, gpointer data) {
   const RECEIVER *rx = (RECEIVER *)data;
+  if (event->button == GDK_BUTTON_SECONDARY) { display_popup_menu(widget); return TRUE; }
 
   /*
    * DX cluster spot click?
@@ -1047,9 +1048,11 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_show_text(cr, fst);
 
     /* chastota: tsifry — tsvet "chastoty", hvost ".Hz" — tsvet "hvosta" */
-    long long zmhz = frequency / 1000000LL;
-    long long zkhz = (frequency % 1000000LL) / 1000LL;
-    long long zhz  = frequency % 1000LL;
+    /* ZVFOSTAT-4: pri ctun chastota hodit — berem ctun_frequency */
+    long long zfreq = vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : frequency;
+    long long zmhz = zfreq / 1000000LL;
+    long long zkhz = (zfreq % 1000000LL) / 1000LL;
+    long long zhz  = zfreq % 1000LL;
     char fmain[16], ftail[8];
     snprintf(fmain, sizeof(fmain), "%lld.%03lld", zmhz, zkhz);
     snprintf(ftail, sizeof(ftail), ".%03lld", zhz);

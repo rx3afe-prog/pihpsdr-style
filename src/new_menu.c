@@ -196,8 +196,7 @@ static gboolean ant_cb (GtkWidget *widget, GdkEventButton *event, gpointer data)
 
 // cppcheck-suppress constParameterCallback
 static gboolean display_cb (GtkWidget *widget, GdkEventButton *event, gpointer data) {
-  cleanup();
-  display_menu(top_window);
+  display_popup_menu(top_window);
   return TRUE;
 }
 
@@ -875,4 +874,74 @@ void new_menu(void) {
     gtk_widget_destroy(main_menu);
     main_menu = NULL;
   }
+}
+
+/* ZMENU-2: spisok stranic dlya vypadayushchego menyu (radio.c) */
+extern void zmh_open_pan_text(void);
+extern void zmh_open_color_settings(void);
+
+static void zmh_menu_pan_text(GtkWidget *w, gpointer d) { zmh_open_pan_text(); }
+static void zmh_menu_color_set(GtkWidget *w, gpointer d) { zmh_open_color_settings(); }
+static void zmh_menu_full(GtkWidget *w, gpointer d) { new_menu(); }
+static void zmh_menu_page(GtkWidget *w, gpointer d) {
+  ((gboolean (*)(GtkWidget *, GdkEventButton *, gpointer))d)(NULL, NULL, NULL);
+}
+
+void zmh_build_menu(GtkWidget *menu) {
+  GtkWidget *sub, *it;
+
+  sub = gtk_menu_new();
+  it = gtk_menu_item_new_with_label("Panadapter Text");
+  g_signal_connect(it, "activate", G_CALLBACK(zmh_menu_pan_text), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(sub), it);
+  it = gtk_menu_item_new_with_label("Color Settings");
+  g_signal_connect(it, "activate", G_CALLBACK(zmh_menu_color_set), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(sub), it);
+  it = gtk_menu_item_new_with_label("Настройки");
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(it), sub);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), it);
+
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+
+  {
+    static const struct { const char *lbl; void *fn; } pages[] = {
+    { "Экран", screen_cb },
+    { "CatTci", rigctl_cb },
+    { "DX", dxcluster_cb },
+    { "Споты", dxspots_cb },
+    { "Радио", radio_cb },
+    { "Тема", theme_cb },
+    { "Текст", text_cb },
+    { "Дисплей", display_cb },
+    { "Измеритель", meter_cb },
+    { "Трансвертер", xvtr_cb },
+    { "VFO", vfo_cb },
+    { "Диапазон", band_cb },
+    { "Ячейка", bstk_cb },
+    { "Режим", mode_cb },
+    { "MEM", store_cb },
+    { "RX", rx_cb },
+    { "Фильтр", filter_cb },
+    { "Шум", noise_cb },
+    { "AGC", agc_cb },
+    { "CW", cw_cb },
+    { "DSP", dsp_cb },
+    { "EQ", equaliser_cb },
+    { "Профиль", profile_cb },
+    { "Ant", ant_cb },
+    { "Панель", toolbar_cb },
+    { "Sliders", sliders_cb },
+    { "MIDI", midi_cb },
+    };
+    for (unsigned k = 0; k < sizeof(pages) / sizeof(pages[0]); k++) {
+      it = gtk_menu_item_new_with_label(pages[k].lbl);
+      g_signal_connect(it, "activate", G_CALLBACK(zmh_menu_page), pages[k].fn);
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), it);
+    }
+  }
+
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+  it = gtk_menu_item_new_with_label("Всё меню");
+  g_signal_connect(it, "activate", G_CALLBACK(zmh_menu_full), NULL);
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), it);
 }
