@@ -1398,7 +1398,7 @@ static void thetis_bar_create(void) {
 static int zen_status = 0;
 static int zen_old_slid = 0;
 static int zen_old_tool = 0;
-static int toolbar_hidden = 0;
+static int toolbar_hidden = 1;  /* ZBAR-TOOL: pri starte knopki s regulyatorami skryty */
 static int zen_h_open = 0;
 static int zen_old_stack = -1;
 int zen_w = 0;
