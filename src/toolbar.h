@@ -46,6 +46,7 @@ extern enum ACTION tb_actions[MAX_TB_FUNCTIONS][MAX_TB_ACTIONS];
 extern int floating_toolbar;
 extern int floating_toolbar_x;
 extern int floating_toolbar_y;
+extern int toolbar_strip_disable;  /* ZBAR-STRIP */
 
 extern void toolbar_save_state(void);
 extern void toolbar_restore_state(void);

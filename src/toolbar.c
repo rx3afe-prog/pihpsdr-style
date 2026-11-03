@@ -36,6 +36,7 @@ int tb_buttons = MIN_TB_BUTTONS;   // buttons per row, including FNC, set in too
 int floating_toolbar = 0;
 int floating_toolbar_x = -1;
 int floating_toolbar_y = -1;
+int toolbar_strip_disable = 0;  /* ZBAR-STRIP: zapret vstroennoy polosy v glavnom okne */
 
 //
 // Slots not listed here are initialised to NO_ACTION
@@ -86,6 +87,7 @@ void toolbar_save_state(void) {
   SetPropI0("toolbar.floating", floating_toolbar);
   SetPropI0("toolbar.floating_x", floating_toolbar_x);
   SetPropI0("toolbar.floating_y", floating_toolbar_y);
+  SetPropI0("toolbar.strip_disable", toolbar_strip_disable);
 }
 
 void toolbar_restore_state(void) {
@@ -113,6 +115,7 @@ void toolbar_restore_state(void) {
   GetPropI0("toolbar.floating", floating_toolbar);
   GetPropI0("toolbar.floating_x", floating_toolbar_x);
   GetPropI0("toolbar.floating_y", floating_toolbar_y);
+  GetPropI0("toolbar.strip_disable", toolbar_strip_disable);
   {
     extern void tb_css_apply(void); /* TBSTYLE PATCH */
     tb_css_apply();
