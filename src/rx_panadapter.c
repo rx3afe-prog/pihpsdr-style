@@ -1030,26 +1030,73 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_set_font_size(cr, 12.0 * vs);
     const double vy = 46.0;
 
-    /* moda+shirina: pravym krayem primykayet sleva k filtru */
+    /* ZMODE: moda — svoim tsvetom/razmerom, shirina — kak byla, s podcherkivaniem */
     int fwidth = (int)(rx->filter_high - rx->filter_low);
     char fst[48];
     if (fwidth >= 1000) {
-      snprintf(fst, sizeof(fst), "%s %.1fk", mode_string[mode], fwidth / 1000.0);
+      snprintf(fst, sizeof(fst), "%.1fk", fwidth / 1000.0);
     } else {
-      snprintf(fst, sizeof(fst), "%s %d Hz", mode_string[mode], fwidth);
+      snprintf(fst, sizeof(fst), "%d Hz", fwidth);
     }
-    cairo_text_extents_t fe;
+    char mst[24];
+    snprintf(mst, sizeof(mst), "%s", mode_string[mode]);
+
+    extern char zvfostat_mode_color_hex[];
+    extern double zvfostat_mode_size;
+    extern int zvfostat_underline;
+    extern int zvfostat_mode_bold;
+    GdkRGBA mc;
+    gdk_rgba_parse(&mc, zvfostat_mode_color_hex);
+    double mode_alpha = mc.alpha * hfreq_bright;
+
+    cairo_text_extents_t fe, mext;
+    /* ZMODE2: moda i filtr — tolko ot Mode Size, Bar Size ih ne trogaet */
+    cairo_set_font_size(cr, 12.0 * scalfac);
     cairo_text_extents(cr, fst, &fe);
-    double zx = filter_left - 6.0 - fe.width;
+    cairo_set_font_size(cr, 12.0 * scalfac * zvfostat_mode_size);
+    /* ZMODE4: zhirnost mody — po galochke */
+    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL,
+        zvfostat_mode_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_text_extents(cr, mst, &mext);
+
+    double gap = 6.0;
+    double zx = filter_left - 6.0 - (mext.x_advance + gap + fe.width);
     if (zx < 4.0) { zx = 4.0; }
-    cairo_set_source_rgba(cr, zc.red, zc.green, zc.blue, zc.alpha * hfreq_bright);
+
+    /* moda */
+    cairo_set_source_rgba(cr, mc.red, mc.green, mc.blue, mode_alpha);
     cairo_move_to(cr, zx, vy);
+    cairo_show_text(cr, mst);
+    if (zvfostat_underline) {
+      double uy = vy + mext.y_bearing + mext.height + 2.0;
+      cairo_set_line_width(cr, 1.5);
+      cairo_move_to(cr, zx, uy);
+      cairo_line_to(cr, zx + mext.x_advance, uy);
+      cairo_stroke(cr);
+    }
+
+    /* shirina filtra */
+    double fx0 = zx + mext.x_advance + gap;
+    /* ZMODE5: shirina — tsvetom mody; tsvet chastoty ee ne torgaet */
+    cairo_set_source_rgba(cr, mc.red, mc.green, mc.blue, mode_alpha);
+    cairo_move_to(cr, fx0, vy);
     cairo_show_text(cr, fst);
+    if (zvfostat_underline) {
+      double uy = vy + fe.y_bearing + fe.height + 2.0;
+      cairo_set_line_width(cr, 1.5);
+      cairo_move_to(cr, fx0, uy);
+      cairo_line_to(cr, fx0 + fe.width, uy);
+      cairo_stroke(cr);
+    }
+    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL,
+        hfreq_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, 12.0 * vs);
 
     /* chastota: tsifry — tsvet "chastoty", hvost ".Hz" — tsvet "hvosta" */
-    long long zmhz = frequency / 1000000LL;
-    long long zkhz = (frequency % 1000000LL) / 1000LL;
-    long long zhz  = frequency % 1000LL;
+    long long zfreq = (vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : vfo[rx->id].frequency + (vfo[rx->id].rit_enabled ? vfo[rx->id].rit : 0));
+    long long zmhz = zfreq / 1000000LL;
+    long long zkhz = (zfreq % 1000000LL) / 1000LL;
+    long long zhz  = zfreq % 1000LL;
     char fmain[16], ftail[8];
     snprintf(fmain, sizeof(fmain), "%lld.%03lld", zmhz, zkhz);
     snprintf(ftail, sizeof(ftail), ".%03lld", zhz);
@@ -1070,9 +1117,10 @@ void rx_panadapter_update(RECEIVER *rx) {
   // ZFREQ: compact frequency readout in the top-left corner
   {
 //    char zbuf[32];
-//    long long zmhz = frequency / 1000000LL;
+    long long zfreq = (vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : vfo[rx->id].frequency + (vfo[rx->id].rit_enabled ? vfo[rx->id].rit : 0));
+    long long zmhz = zfreq / 1000000LL;
 //    long long zkhz = (frequency % 1000000LL) / 1000LL;
-//    long long zhz  = frequency % 1000LL;
+//    long long zhz  = zfreq % 1000LL;
 //    snprintf(zbuf, sizeof(zbuf), "%lld.%03lld.%03lld", zmhz, zkhz, zhz);
 //    cairo_select_font_face(cr, DISPLAY_FONT_FACE, CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
 //    cairo_set_font_size(cr, 15.0 * scalfac);
