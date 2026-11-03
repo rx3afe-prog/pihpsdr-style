@@ -1435,7 +1435,7 @@ void radio_reconfigure(void) {
 
   int my_height = display_height[display_size];
   int my_width  = display_width[display_size];
-  rx_height = (zen_status || toolbar_hidden) ? my_height : my_height - VFO_HEIGHT;
+  rx_height = (zen_status || toolbar_hidden || toolbar_strip_disable) ? my_height : my_height - VFO_HEIGHT;
   if (zrc_last_w != my_width || zrc_last_h != rx_height) {
     t_print("%s: receivers=%d  %dx%d\n", __func__, receivers, my_width, rx_height);
     zrc_last_w = my_width;
@@ -1448,7 +1448,7 @@ void radio_reconfigure(void) {
 // [ZMH] убрано: ползунки показываем сразу, без зен-режима
   rx_height -= SLIDERS_HEIGHT * sliders_grid_rows;
   rx_height -= TOOLBAR_HEIGHT * active_toolbar_rows;
-  y = (zen_status || toolbar_hidden) ? 0 : VFO_HEIGHT;
+  y = (zen_status || toolbar_hidden || toolbar_strip_disable) ? 0 : VFO_HEIGHT;
 
   if (!floating_toolbar) {
     // must happen before the embedded sliders are created, this also destroys the floating sliders
@@ -1591,7 +1591,7 @@ void radio_reconfigure(void) {
 
   /* SKRYT: chistaya panorama vne zena — ubiraem verh s chastotami i meter */
   if (zen_status == 0) {
-    if (toolbar_hidden) {
+    if (toolbar_hidden || toolbar_strip_disable) {
       if (GTK_IS_WIDGET(vfo_panel)) { gtk_widget_hide(vfo_panel); }
       if (GTK_IS_WIDGET(meter)) { gtk_widget_hide(meter); }
     } else {
@@ -1738,7 +1738,7 @@ static void radio_create_visual(void) {
   g_signal_connect(hide_b, "button-press-event", G_CALLBACK(hideall_cb), NULL);
   gtk_fixed_put(GTK_FIXED(fixed), hide_b, my_width - 124, 4);
   y += VFO_HEIGHT / 2;
-  rx_height = (zen_status || toolbar_hidden) ? my_height : my_height - VFO_HEIGHT;
+  rx_height = (zen_status || toolbar_hidden || toolbar_strip_disable) ? my_height : my_height - VFO_HEIGHT;
   if (zrc_last_w != my_width || zrc_last_h != rx_height) {
     t_print("%s: receivers=%d  %dx%d\n", __func__, receivers, my_width, rx_height);
     zrc_last_w = my_width;
@@ -1883,7 +1883,7 @@ static void radio_create_visual(void) {
 
   if (floating_toolbar && !toolbar_hidden) {
     toolbar_create_floating(TOOLBAR_HEIGHT, menu_b, hide_b);
-  } else if (toolbar_rows > 0) {
+  } else if (toolbar_rows > 0 && !toolbar_strip_disable) {
     toolbar_create(my_width, TOOLBAR_HEIGHT, toolbar_rows);
     toolbar_show(y);
   } else if (floating_toolbar && toolbar_hidden) {
@@ -1959,9 +1959,6 @@ static void zmh_raise(void) {
   }
   /* ZFREQ-B: tsifrovaya shkala VFO B — srazu posle BAR, otstup ~2-3 mm */
   if (hfreq_b_label != NULL && !gtk_widget_get_parent(hfreq_b_label)) {
-    gtk_widget_set_margin_start(hfreq_b_label, 9);
-    gtk_header_bar_pack_start(GTK_HEADER_BAR(tb), hfreq_b_label);
-    gtk_widget_show(hfreq_b_label);
     g_print("ZMH6: B-shkala podnyata v titlebar ryadom s BAR\n");
   }
   { static GtkCssProvider *zcss = NULL;
@@ -2608,8 +2605,8 @@ void radio_start_radio(void) {
   radio_restore_state();
   radio_change_region(region);
   radio_create_visual();
-  zen_geom_reapply(NULL);  // ZGEOMFIX: вернуть сохранённую геометрию после построения радио
   radio_reconfigure_screen();
+  g_timeout_add(1000, zen_geom_reapply, NULL);  // ZGEOM2: geometriya posle vseh resizov
 #ifdef GPIO
   gpio_set_orion_options();
 #endif
@@ -5111,8 +5108,8 @@ int radio_client_start(gpointer data) {
   radio_restore_state();
   send_screen(cl_sock_tcp, rx_stack_horizontal, display_width[display_size]);
   radio_create_visual();
-  zen_geom_reapply(NULL);  // ZGEOMFIX: вернуть сохранённую геометрию после построения радио
   radio_reconfigure_screen();
+  g_timeout_add(1000, zen_geom_reapply, NULL);  // ZGEOM2: geometriya posle vseh resizov
 #ifdef GPIO
   gpio_set_orion_options();
 #endif

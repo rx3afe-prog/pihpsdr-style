@@ -282,11 +282,10 @@ void zen_geom_save(void) {
   // ZGEOMFIX: синхронизируемся с props радио — при выходе радио запишет
   // эти цифры в display_width/display_height/display_size, и при следующем
   // старте radio_create_visual построится под наш реальный размер.
-  if (display_size == 1) {  // трогаем только режим Custom
-    display_width[1]  = w;
-    display_height[1] = h;
-    t_print("ZGEOM: sync display_size[1] -> %dx%d\n", w, h);
-  }
+  display_size = 1;  // ZGEOM4: при выходе всегда возвращаем Custom
+  display_width[1]  = w;
+  display_height[1] = h;
+  t_print("ZGEOM: sync display_size[1] -> %dx%d\n", w, h);
 }
 
 static gboolean main_delete (GtkWidget *widget) {
@@ -407,15 +406,9 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   //
   hfreq_conf_load();
   pan_text_load_conf();
-  hfreq_label = gtk_label_new("0.000.000");
-  gtk_widget_set_name(hfreq_label, "hfreq_label");
   hfreq_css_apply();
-  hfreq_b_label = gtk_label_new("0.000.000");
-  gtk_widget_set_name(hfreq_b_label, "hfreq_b_label");
   hfreq_css_apply();
   GtkWidget *hbar = gtk_header_bar_new();
-    gtk_widget_set_margin_start(hfreq_label, 19);
-  gtk_header_bar_pack_start(GTK_HEADER_BAR(hbar), hfreq_label);
   /* ZFREQ-B: B ne pack_end — ee podnimet radio.c v levuyu gruppu, srazu posle BAR */
   gtk_header_bar_set_custom_title(GTK_HEADER_BAR(hbar), gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
   gtk_header_bar_set_has_subtitle(GTK_HEADER_BAR(hbar), FALSE);
@@ -516,6 +509,8 @@ static void activate_pihpsdr(GtkApplication *app, gpointer data) {
   gtk_widget_set_halign(status_label, GTK_ALIGN_START);
   gtk_grid_attach(GTK_GRID(topgrid), status_label, 1, row++, 1, 1);
   gtk_widget_show_all(top_window);
+  if (hfreq_label != NULL) gtk_widget_hide(hfreq_label);
+  if (hfreq_b_label != NULL) gtk_widget_hide(hfreq_b_label);
   g_idle_add(init, NULL);
 }
 
