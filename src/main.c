@@ -82,6 +82,7 @@ double hfreq_b_font_size = 22.0;
 char hfreq_b_color_hex[16] = "#e07810";
 char hfreq_b_tail_hex[16] = "#e07810";
 int hfreq_bold = 1;             /* ZFREQ-B: galochka Tolstyi shrift */
+int hfreq_underline = 1;      /* ZFREQ-U: podcherkivanie chastoty */
 double hfreq_bright = 100.0;    /* ZFREQ-B: yarkost shkaly, % */
 //
 // HEADERCFG: tunable header scale appearance
@@ -90,6 +91,9 @@ double hfreq_font_size = 22.0;
 char hfreq_color_hex[16] = "#e01010";
 char hfreq_tail_hex[16] = "#006400";
 char zvfostat_mode_color_hex[16] = "#00c000"; /* ZMODE: tsvet mody u filtra */
+char zvfostat_filter_color_hex[16] = "#00c000"; /* ZFCOL: tsvet shiriny filtra */
+char zvfostat_agc_color_hex[16] = ""; /* ZAGC: tsvet linii AGC, pustо = kak tema */
+double pan_agc_line_width = 0.0; /* ZAGC: 0 = standartnaya tolshchina */
 double zvfostat_mode_size = 1.0;              /* ZMODE: razmer shrifta mody */
 int zvfostat_underline = 1;                   /* ZMODE: podcherkivanie 0/1 */
 int zvfostat_mode_bold = 1;                   /* ZMODE: zhirnaya moda 0/1 */
@@ -135,6 +139,7 @@ void hfreq_conf_save(void) {
   fprintf(f, "btail=%s\n", hfreq_b_tail_hex);
   fprintf(f, "bweight=%d\n", hfreq_bold);
   fprintf(f, "bright=%g\n", hfreq_bright);
+  fprintf(f, "bunderline=%d\n", hfreq_underline);
   fclose(f);
 }
 
@@ -165,6 +170,8 @@ void hfreq_conf_load(void) {
       g_strchomp(hfreq_b_tail_hex);
     } else if (strncmp(line, "bweight=", 8) == 0) {
       hfreq_bold = atoi(line + 8);
+    } else if (strncmp(line, "bunderline=", 11) == 0) {
+      hfreq_underline = atoi(line + 11);
     } else if (strncmp(line, "bright=", 7) == 0) {
       double v = atof(line + 7);
       if (v >= 10.0 && v <= 100.0) hfreq_bright = v;

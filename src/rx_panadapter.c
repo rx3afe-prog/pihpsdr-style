@@ -564,6 +564,11 @@ void rx_panadapter_update(RECEIVER *rx) {
   // agc
   if (rx->agc != AGC_OFF && rx->agc != AGC_FIXED) {
     cairo_set_line_width(cr, PAN_LINE_THICK);
+    extern char zvfostat_agc_color_hex[]; /* ZAGC */
+    extern double pan_agc_line_width;     /* ZAGC */
+    GdkRGBA ac;
+    int agc_custom = (zvfostat_agc_color_hex[0] != '\0');
+    if (agc_custom) gdk_rgba_parse(&ac, zvfostat_agc_color_hex);
     double knee_y = rx->agc_thresh + soffset;
     knee_y = floor((panhi - knee_y)
                    * (double) myheight
@@ -612,7 +617,9 @@ void rx_panadapter_update(RECEIVER *rx) {
       cairo_restore(cr);
     }
 
-    if (active) {
+    if (agc_custom) {
+      cairo_set_source_rgba(cr, ac.red, ac.green, ac.blue, ac.alpha); /* ZAGC */
+    } else if (active) {
       cairo_set_source_rgba(cr, COLOUR_OK);
     } else {
       cairo_set_source_rgba(cr, COLOUR_OK_WEAK);
@@ -632,13 +639,21 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_fill(cr);
     cairo_move_to(cr, 40.0, knee_y);
     cairo_line_to(cr, (double)mywidth - 40.0, knee_y);
-    cairo_set_line_width(cr, PAN_LINE_THICK);
+    if (pan_agc_line_width > 0.0) {
+      cairo_set_line_width(cr, pan_agc_line_width); /* ZAGC */
+    } else {
+      cairo_set_line_width(cr, PAN_LINE_THICK);
+    }
     cairo_stroke(cr);
     cairo_move_to(cr, 48.0, knee_y);
     cairo_save(cr);
     cairo_select_font_face(cr, "Sans", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
     cairo_set_font_size(cr, 14.0);
-    cairo_set_source_rgba(cr, COLOUR_AGC_LABEL);
+    if (agc_custom) {
+      cairo_set_source_rgba(cr, ac.red, ac.green, ac.blue, ac.alpha); /* ZAGC */
+    } else {
+      cairo_set_source_rgba(cr, COLOUR_AGC_LABEL);
+    }
     cairo_show_text(cr, "-G");
     cairo_restore(cr);
   }
@@ -1048,6 +1063,10 @@ void rx_panadapter_update(RECEIVER *rx) {
     GdkRGBA mc;
     gdk_rgba_parse(&mc, zvfostat_mode_color_hex);
     double mode_alpha = mc.alpha * hfreq_bright;
+    extern char zvfostat_filter_color_hex[]; /* ZFCOL */
+    GdkRGBA fc;
+    gdk_rgba_parse(&fc, zvfostat_filter_color_hex);
+    double filt_alpha = fc.alpha * hfreq_bright;
 
     cairo_text_extents_t fe, mext;
     /* ZMODE2: moda i filtr — tolko ot Mode Size, Bar Size ih ne trogaet */
@@ -1077,8 +1096,8 @@ void rx_panadapter_update(RECEIVER *rx) {
 
     /* shirina filtra */
     double fx0 = zx + mext.x_advance + gap;
-    /* ZMODE5: shirina — tsvetom mody; tsvet chastoty ee ne torgaet */
-    cairo_set_source_rgba(cr, mc.red, mc.green, mc.blue, mode_alpha);
+    /* ZFCOL: shirina — svoim tsvetom; moda i chastota pri svoih */
+    cairo_set_source_rgba(cr, fc.red, fc.green, fc.blue, filt_alpha);
     cairo_move_to(cr, fx0, vy);
     cairo_show_text(cr, fst);
     if (zvfostat_underline) {
@@ -1092,6 +1111,7 @@ void rx_panadapter_update(RECEIVER *rx) {
         hfreq_bold ? CAIRO_FONT_WEIGHT_BOLD : CAIRO_FONT_WEIGHT_NORMAL);
     cairo_set_font_size(cr, 12.0 * vs);
 
+    extern int hfreq_underline; /* ZFREQ-U */
     /* chastota: tsifry — tsvet "chastoty", hvost ".Hz" — tsvet "hvosta" */
     long long zfreq = (vfo[rx->id].ctun ? vfo[rx->id].ctun_frequency : vfo[rx->id].frequency + (vfo[rx->id].rit_enabled ? vfo[rx->id].rit : 0));
     long long zmhz = zfreq / 1000000LL;
@@ -1111,7 +1131,17 @@ void rx_panadapter_update(RECEIVER *rx) {
     cairo_move_to(cr, fx, vy);
     cairo_show_text(cr, fmain);
     cairo_set_source_rgba(cr, zt.red, zt.green, zt.blue, zt.alpha * hfreq_bright);
-    cairo_show_text(cr, ftail);
+    cairo_show_text(cr, ftail);    if (hfreq_underline) { /* ZFREQ-U: liniya pod tsiframi, tsvet chastoty */
+      double e1 = em.y_bearing + em.height;
+      double e2 = et.y_bearing + et.height;
+      double uy = vy + (e2 > e1 ? e2 : e1) + 2.0;
+      cairo_set_source_rgba(cr, zc.red, zc.green, zc.blue, zc.alpha * hfreq_bright);
+      cairo_set_line_width(cr, 1.5);
+      cairo_move_to(cr, fx, uy);
+      cairo_line_to(cr, fx + em.width + et.width, uy);
+      cairo_stroke(cr);
+    }
+
   }
 
   // ZFREQ: compact frequency readout in the top-left corner

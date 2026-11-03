@@ -4456,6 +4456,9 @@ extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
 extern double zvfostat_size_scale;  /* ZVFOSTAT: razmer napishey u filtra */
 extern char zvfostat_mode_color_hex[16];  /* ZMODE */
+extern char zvfostat_filter_color_hex[16]; /* ZFCOL */
+extern char zvfostat_agc_color_hex[16]; /* ZAGC */
+extern double pan_agc_line_width;   /* ZAGC */
 extern double zvfostat_mode_size;       /* ZMODE */
 extern int zvfostat_underline;          /* ZMODE */
 extern int zvfostat_mode_bold;          /* ZMODE */
@@ -4528,6 +4531,9 @@ static void pan_grid_save_custom(void) {
   fprintf(f, "status_size=%.2f\n", vfo_status_size_scale);
   fprintf(f, "zvfostat_size=%.2f\n", zvfostat_size_scale);
   fprintf(f, "zmode_color=%s\n", zvfostat_mode_color_hex);
+  fprintf(f, "zfilter_color=%s\n", zvfostat_filter_color_hex);
+  fprintf(f, "agc_line_color=%s\n", zvfostat_agc_color_hex);
+  fprintf(f, "agc_line_width=%.2f\n", pan_agc_line_width);
   fprintf(f, "zmode_size=%.2f\n", zvfostat_mode_size);
   fprintf(f, "zmode_underline=%d\n", zvfostat_underline);
   fprintf(f, "zmode_bold=%d\n", zvfostat_mode_bold);
@@ -4645,6 +4651,14 @@ static void pan_grid_restore_custom(void) {
     } else if (strncmp(line, "zmode_color=", 12) == 0) {
       g_strlcpy(zvfostat_mode_color_hex, line + 12, sizeof(zvfostat_mode_color_hex));
       g_strchomp(zvfostat_mode_color_hex);
+    } else if (strncmp(line, "zfilter_color=", 14) == 0) {
+      g_strlcpy(zvfostat_filter_color_hex, line + 14, sizeof(zvfostat_filter_color_hex));
+      g_strchomp(zvfostat_filter_color_hex);
+    } else if (strncmp(line, "agc_line_color=", 15) == 0) {
+      g_strlcpy(zvfostat_agc_color_hex, line + 15, sizeof(zvfostat_agc_color_hex));
+      g_strchomp(zvfostat_agc_color_hex);
+    } else if (strncmp(line, "agc_line_width=", 15) == 0) {
+      pan_agc_line_width = atof(line + 15);
     } else if (strncmp(line, "zmode_size=", 11) == 0) {
       zvfostat_mode_size = atof(line + 11);
       if (zvfostat_mode_size < 0.5) zvfostat_mode_size = 0.5;
