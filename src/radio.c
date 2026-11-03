@@ -4455,6 +4455,10 @@ extern GdkRGBA vfo_status_color;
 extern double vfo_status_brightness;
 extern double vfo_status_size_scale;
 extern double zvfostat_size_scale;  /* ZVFOSTAT: razmer napishey u filtra */
+extern char zvfostat_mode_color_hex[16];  /* ZMODE */
+extern double zvfostat_mode_size;       /* ZMODE */
+extern int zvfostat_underline;          /* ZMODE */
+extern int zvfostat_mode_bold;          /* ZMODE */
 extern double pan_dbm_font_size;   /* PAN TEXT PATCH */
 extern double pan_freq_font_size;  /* PAN TEXT PATCH */
 extern GdkRGBA pan_dbm_color;      /* PAN TEXT PATCH */
@@ -4523,6 +4527,10 @@ static void pan_grid_save_custom(void) {
   fprintf(f, "status_brightness=%.2f\n", vfo_status_brightness);
   fprintf(f, "status_size=%.2f\n", vfo_status_size_scale);
   fprintf(f, "zvfostat_size=%.2f\n", zvfostat_size_scale);
+  fprintf(f, "zmode_color=%s\n", zvfostat_mode_color_hex);
+  fprintf(f, "zmode_size=%.2f\n", zvfostat_mode_size);
+  fprintf(f, "zmode_underline=%d\n", zvfostat_underline);
+  fprintf(f, "zmode_bold=%d\n", zvfostat_mode_bold);
   fclose(f);
 }
 
@@ -4634,6 +4642,17 @@ static void pan_grid_restore_custom(void) {
       vfo_status_size_scale = atof(line + 12);
     } else if (strncmp(line, "zvfostat_size=", 14) == 0) {
       zvfostat_size_scale = atof(line + 14);
+    } else if (strncmp(line, "zmode_color=", 12) == 0) {
+      g_strlcpy(zvfostat_mode_color_hex, line + 12, sizeof(zvfostat_mode_color_hex));
+      g_strchomp(zvfostat_mode_color_hex);
+    } else if (strncmp(line, "zmode_size=", 11) == 0) {
+      zvfostat_mode_size = atof(line + 11);
+      if (zvfostat_mode_size < 0.5) zvfostat_mode_size = 0.5;
+      if (zvfostat_mode_size > 3.0) zvfostat_mode_size = 3.0;
+    } else if (strncmp(line, "zmode_underline=", 16) == 0) {
+      zvfostat_underline = atoi(line + 16);
+    } else if (strncmp(line, "zmode_bold=", 11) == 0) {
+      zvfostat_mode_bold = atoi(line + 11);
     }
   }
   fclose(f);

@@ -89,6 +89,10 @@ double hfreq_bright = 100.0;    /* ZFREQ-B: yarkost shkaly, % */
 double hfreq_font_size = 22.0;
 char hfreq_color_hex[16] = "#e01010";
 char hfreq_tail_hex[16] = "#006400";
+char zvfostat_mode_color_hex[16] = "#00c000"; /* ZMODE: tsvet mody u filtra */
+double zvfostat_mode_size = 1.0;              /* ZMODE: razmer shrifta mody */
+int zvfostat_underline = 1;                   /* ZMODE: podcherkivanie 0/1 */
+int zvfostat_mode_bold = 1;                   /* ZMODE: zhirnaya moda 0/1 */
 
 static GtkCssProvider *hfreq_css = NULL;
 
